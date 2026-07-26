@@ -510,7 +510,7 @@ public static partial class SupportBundleExporter
     private static partial Regex Ipv6CandidateRegex();
 
     [GeneratedRegex(
-        @"(?i)(\b(?:serial(?:\s+number)?|s/n)\b(?:\s*(?:is|=|:))?\s*['""]?)[A-Z0-9._-]{4,64}['""]?",
+        @"(?i)(\b(?:serial\s+number|serial(?!\s+number)|s/n)\b(?:\s*(?:is|=|:))?\s*['""]?)[A-Z0-9._-]{4,64}['""]?",
         RegexOptions.CultureInvariant)]
     private static partial Regex SerialContextRegex();
 
