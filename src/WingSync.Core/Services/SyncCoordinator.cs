@@ -4467,7 +4467,7 @@ public sealed class SyncCoordinator : IAsyncDisposable
 
         if (!preserveFaultedStatus)
         {
-            ChangeStatus(SyncCoordinatorState.Stopped, "Synchronization gestopt.");
+            ChangeStatus(SyncCoordinatorState.Stopped, "Synchronization stopped.");
         }
     }
 

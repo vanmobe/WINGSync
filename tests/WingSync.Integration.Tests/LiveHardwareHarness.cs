@@ -1149,8 +1149,8 @@ internal static class Channel40Preflight
                     .Take(16)
                     .Select(static pair => $"{pair.Key}={pair.Value.Type}:{pair.Value}"));
             throw new LiveWriteSafetyException(
-                $"No unambiguous, finite {scope}-float scalar found on CH{channel} gevonden. " +
-                $"Waargenomen onder {prefix}: {observed}");
+                $"No unambiguous, finite {scope}-float scalar found on CH{channel}. " +
+                $"Observed under {prefix}: {observed}");
         }
 
         var selected = candidates[0];
