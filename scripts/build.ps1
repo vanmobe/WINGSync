@@ -93,6 +93,7 @@ foreach ($vendorFile in $expectedVendorHashes.GetEnumerator()) {
 }
 
 $sourceCandidates = @(
+    (Join-Path $repoRoot '.gitattributes'),
     (Join-Path $repoRoot 'Directory.Build.props'),
     (Join-Path $repoRoot 'global.json'),
     (Join-Path $repoRoot 'NuGet.Config'),
