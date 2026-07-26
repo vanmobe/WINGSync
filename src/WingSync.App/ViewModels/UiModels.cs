@@ -75,7 +75,7 @@ public sealed class ScopeSelectionViewModel : ObservableObject
 
     public bool IsHighRisk { get; }
 
-    public string RiskLabel => IsHighRisk ? "VERHOOGD RISICO" : "STANDAARD";
+    public string RiskLabel => IsHighRisk ? "HIGH RISK" : "STANDARD";
 
     public Brush RiskBrush => IsHighRisk
         ? new SolidColorBrush(Color.FromRgb(180, 107, 8))
@@ -197,9 +197,9 @@ public sealed record ActivityItemViewModel(
     {
         DiagnosticSeverity.Trace => "Trace",
         DiagnosticSeverity.Information => "Info",
-        DiagnosticSeverity.Warning => "Waarschuwing",
-        DiagnosticSeverity.Error => "Fout",
-        DiagnosticSeverity.Critical => "Kritiek",
+        DiagnosticSeverity.Warning => "Warning",
+        DiagnosticSeverity.Error => "Error",
+        DiagnosticSeverity.Critical => "Critical",
         _ => Severity.ToString(),
     };
 }

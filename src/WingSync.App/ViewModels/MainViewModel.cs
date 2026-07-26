@@ -69,18 +69,18 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
     private DiscoveredWingViewModel? selectedStageWing;
     private string editableFohIp = string.Empty;
     private string editableStageIp = string.Empty;
-    private string discoveryStatus = "Nog niet gezocht.";
+    private string discoveryStatus = "Not searched yet.";
     private DirectionOption selectedDirection;
     private bool isDryRun = true;
     private bool verifyEveryWrite = true;
     private bool allowHighRiskWrites;
     private ChannelMappingViewModel? selectedMapping;
-    private string validationSummary = "Controleer de configuratie en sla ze op.";
+    private string validationSummary = "Review the configuration and save it.";
     private string validationDetails = string.Empty;
     private string configurationSafetyNotice = string.Empty;
     private Brush validationBrush = Gray;
-    private string selectedActivityFilter = "Alles";
-    private string overallStatusText = "Niet gestart";
+    private string selectedActivityFilter = "All";
+    private string overallStatusText = "Not started";
     private Brush overallStatusBrush = Gray;
     private string fohStatusText = "Offline";
     private Brush fohStatusBackground = GraySoft;
@@ -98,12 +98,12 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
     private long blockedCount;
     private int queueDepth;
     private string p95Latency = "—";
-    private string cacheStatus = "Offline beschikbaar";
-    private string cacheAge = "nog geen live snapshot";
-    private string fohLastData = "nog geen snapshot";
-    private string stageLastData = "nog geen snapshot";
-    private string fohCacheSummary = "Geen lokale snapshot";
-    private string stageCacheSummary = "Geen lokale snapshot";
+    private string cacheStatus = "Available offline";
+    private string cacheAge = "no live snapshot yet";
+    private string fohLastData = "no snapshot yet";
+    private string stageLastData = "no snapshot yet";
+    private string fohCacheSummary = "No local snapshot";
+    private string stageCacheSummary = "No local snapshot";
     private long cachePresentationGeneration;
     private int previewTokenAuditCount;
 
@@ -132,11 +132,11 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
 
         DirectionOptions =
         [
-            new DirectionOption("FOH → Podium (aanbevolen)", SyncDirection.FohToMonitor),
-            new DirectionOption("Podium → FOH", SyncDirection.MonitorToFoh),
+            new DirectionOption("FOH → Stage (recommended)", SyncDirection.FohToMonitor),
+            new DirectionOption("Stage → FOH", SyncDirection.MonitorToFoh),
         ];
         selectedDirection = DirectionOptions[0];
-        ActivityFilters = ["Alles", "Problemen", "Writes", "Netwerk"];
+        ActivityFilters = ["All", "Problems", "Writes", "Network"];
         ScopeSelections = new ObservableCollection<ScopeSelectionViewModel>(CreateScopeSelections());
         ChannelMappings = [];
         DiscoveredWings = [];
@@ -272,7 +272,7 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
                         DiagnosticSeverity.Critical,
                         "WAPI_HELPER_MISSING",
                         exception.Message,
-                        "Installatie",
+                        "Installation",
                         DateTimeOffset.UtcNow));
             }
 
@@ -300,8 +300,8 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
         if (startupProblem is not null)
         {
             viewModel.SetProblem(
-                "WAPI-helper ontbreekt",
-                $"{startupProblem} Installeer het volledige WingSync-pakket opnieuw.");
+                "WAPI helper is missing",
+                $"{startupProblem} Reinstall the complete WingSync package.");
         }
 
         return viewModel;
@@ -367,18 +367,18 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
     public string HeaderTitle => SelectedPageIndex switch
     {
         0 => "Status",
-        1 => "Synchronisatie instellen",
-        2 => "Activiteit en diagnose",
-        3 => "Instellingen",
+        1 => "Configure synchronization",
+        2 => "Activity and diagnostics",
+        3 => "Settings",
         _ => "WingSync",
     };
 
     public string HeaderSubtitle => SelectedPageIndex switch
     {
-        0 => "Veilige eenrichtingssynchronisatie met readback",
-        1 => "Scopes en kanaalmapping",
-        2 => "Gestructureerde lokale audittrail",
-        3 => "Herstel, cache en productinformatie",
+        0 => "Safe one-way synchronization with readback",
+        1 => "Scopes and channel mapping",
+        2 => "Structured local audit trail",
+        3 => "Recovery, cache, and product information",
         _ => string.Empty,
     };
 
@@ -562,7 +562,7 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
         get => selectedActivityFilter;
         set
         {
-            if (SetProperty(ref selectedActivityFilter, value ?? "Alles"))
+            if (SetProperty(ref selectedActivityFilter, value ?? "All"))
             {
                 filteredActivity.Refresh();
             }
@@ -760,20 +760,20 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
         {
             if (!BothIdentitiesPinned)
             {
-                return "Setup vereist";
+                return "Setup required";
             }
 
             if (!connectionTestSucceeded)
             {
-                return "Test verbinding";
+                return "Test connection";
             }
 
             if (!IsDryRun && !hasCompletedDryRun)
             {
-                return "Droogloop vereist";
+                return "Dry run required";
             }
 
-            return IsDryRun ? "Start droogloop" : "Start live";
+            return IsDryRun ? "Start dry run" : "Start live";
         }
     }
 
@@ -783,42 +783,42 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
         {
             if (!BothIdentitiesPinned)
             {
-                return "Setup vereist: wijs beide consoles toe en controleer de serienummers.";
+                return "Setup required: assign both consoles and verify the serial numbers.";
             }
 
             if (!connectionTestSucceeded)
             {
-                return "Test eerst beide WAPI-verbindingen en hardware-identiteiten in Setup.";
+                return "First test both WAPI connections and hardware identities in Setup.";
             }
 
             if (!IsDryRun && !hasCompletedDryRun)
             {
-                return "Schakel droogloop opnieuw in en beoordeel eerst de preview.";
+                return "Enable dry run again and review the preview first.";
             }
 
             return IsDryRun
-                ? "Start een write-vrije droogloop en beoordeel de preview."
-                : "Maak een verse live-diff; de veilige standaardkeuze in de bevestiging is Nee.";
+                ? "Start a write-free dry run and review the preview."
+                : "Create a fresh live diff; the safe default choice in the confirmation is No.";
         }
     }
 
     public string RunModeText => coordinator.Status.State switch
     {
-        SyncCoordinatorState.RunningLive => "LIVE ACTIEF · READBACK OK",
-        SyncCoordinatorState.ApplyingLive => "LIVE WORDT TOEGEPAST · WRITES + READBACK",
-        SyncCoordinatorState.RunningDryRun => "DROOGLOOP · GEEN WRITES",
+        SyncCoordinatorState.RunningLive => "LIVE ACTIVE · READBACK OK",
+        SyncCoordinatorState.ApplyingLive => "APPLYING LIVE · WRITES + READBACK",
+        SyncCoordinatorState.RunningDryRun => "DRY RUN · NO WRITES",
         SyncCoordinatorState.AwaitingConfirmation or
         SyncCoordinatorState.Connecting or
         SyncCoordinatorState.Snapshotting => activeConfiguration?.Safety.DryRun == false
-            ? "WORDT VOORBEREID · GEEN WRITES"
-            : "DROOGLOOP · GEEN WRITES",
+            ? "PREPARING · NO WRITES"
+            : "DRY RUN · NO WRITES",
         SyncCoordinatorState.Reconnecting =>
             activeConfiguration?.Safety.DryRun == false
-                ? "LIVE GEPAUZEERD · GEEN WRITES"
-                : "DROOGLOOP GEPAUZEERD",
+                ? "LIVE PAUSED · NO WRITES"
+                : "DRY RUN PAUSED",
         SyncCoordinatorState.Paused or SyncCoordinatorState.Faulted =>
-            "GEBLOKKEERD · GEEN WRITES",
-        _ => IsDryRun ? "LIVE UIT · DROOGLOOP" : "LIVE GEREED · NOG GEEN WRITES",
+            "BLOCKED · NO WRITES",
+        _ => IsDryRun ? "LIVE OFF · DRY RUN" : "LIVE READY · NO WRITES YET",
     };
 
     public Brush RunModeBackground => coordinator.Status.State switch
@@ -851,10 +851,10 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
 
     public string SafetySummary =>
         IsDryRun
-            ? "Droogloop is veilig: verschillen worden berekend en gelogd, maar niet verstuurd."
+            ? "Dry run is safe: differences are calculated and logged, but not sent."
             : AllowHighRiskWrites
-                ? "Live en verhoogd risico: routing/levels kunnen hoorbaar wijzigen. Een extra bevestiging is verplicht."
-                : "Live writes worden teruggelezen. CONN-, MAIN-, BUS-, FADER- en MUTE-scopes blijven geblokkeerd.";
+                ? "Live and high risk: routing/levels can change audibly. Extra confirmation is required."
+                : "Live writes are read back. CONN, MAIN, BUS, FADER, and MUTE scopes remain blocked.";
 
     public string VersionText =>
         $"v{Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "1.0.0"}" +
@@ -868,33 +868,33 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
 
     public string DirectionSummaryText =>
         SelectedDirection.Direction == SyncDirection.MonitorToFoh
-            ? "PODIUM ↦ FOH"
-            : "FOH ↦ PODIUM";
+            ? "STAGE ↦ FOH"
+            : "FOH ↦ STAGE";
 
     public string FohRoleCaption =>
         SelectedDirection.Direction == SyncDirection.MonitorToFoh
-            ? "FOH · DOEL"
-            : "FOH · BRON";
+            ? "FOH · TARGET"
+            : "FOH · SOURCE";
 
     public string StageRoleCaption =>
         SelectedDirection.Direction == SyncDirection.MonitorToFoh
-            ? "PODIUM · BRON"
-            : "PODIUM · DOEL";
+            ? "STAGE · SOURCE"
+            : "STAGE · TARGET";
 
     public string FohEditorCaption =>
         SelectedDirection.Direction == SyncDirection.MonitorToFoh
-            ? "FOH-console (doel)"
-            : "FOH-console (bron)";
+            ? "FOH console (target)"
+            : "FOH console (source)";
 
     public string StageEditorCaption =>
         SelectedDirection.Direction == SyncDirection.MonitorToFoh
-            ? "Podiumconsole (bron)"
-            : "Podiumconsole (doel)";
+            ? "Stage console (source)"
+            : "Stage console (target)";
 
     public string FlowArrowText =>
         SelectedDirection.Direction == SyncDirection.MonitorToFoh ? "◀────" : "────▶";
 
-    public string FohName => SelectedFohWing?.Wing.Name ?? "FOH niet toegewezen";
+    public string FohName => SelectedFohWing?.Wing.Name ?? "FOH not assigned";
 
     public string FohIp => EditableFohIp.Length == 0 ? "—" : EditableFohIp;
 
@@ -910,7 +910,7 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
 
     public string FohLastSeen => fohLastData;
 
-    public string StageName => SelectedStageWing?.Wing.Name ?? "Podium niet toegewezen";
+    public string StageName => SelectedStageWing?.Wing.Name ?? "Stage not assigned";
 
     public string StageIp => EditableStageIp.Length == 0 ? "—" : EditableStageIp;
 
@@ -930,7 +930,7 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
     public string StageLastSeen => stageLastData;
 
     public string SetupProgressText =>
-        $"{CompletedSetupSteps}/4 setupstappen gereed";
+        $"{CompletedSetupSteps}/4 setup steps ready";
 
     public string SetupProgressIndicatorText =>
         CompletedSetupSteps == 4
@@ -939,8 +939,8 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
 
     public string SetupProgressAccessibleText =>
         CompletedSetupSteps == 4
-            ? "Setup voltooid, vier van vier stappen gereed"
-            : $"Setup in uitvoering, {CompletedSetupSteps} van vier stappen gereed";
+            ? "Setup complete, four of four steps ready"
+            : $"Setup in progress, {CompletedSetupSteps} of four steps ready";
 
     public Brush SetupProgressBackground =>
         CompletedSetupSteps == 4 ? GreenSoft : GraySoft;
@@ -954,29 +954,29 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
         {
             if (!BothIdentitiesPinned)
             {
-                return "Volgende stap: zoek beide consoles en controleer hun serienummer.";
+                return "Next step: find both consoles and verify their serial number.";
             }
 
             if (!editableConfigurationIsValid ||
                 !ChannelMappings.Any(static mapping => mapping.IsEnabled) ||
                 !ScopeSelections.Any(static scope => scope.IsSelected))
             {
-                return "Volgende stap: kies scopes en controleer de kanaalmapping.";
+                return "Next step: choose scopes and verify the channel mapping.";
             }
 
             if (!connectionTestSucceeded)
             {
-                return "Volgende stap: test de twee verbindingen en identiteiten.";
+                return "Next step: test the two connections and identities.";
             }
 
             if (!hasCompletedDryRun)
             {
-                return "Volgende stap: start een droogloop en beoordeel de preview.";
+                return "Next step: start a dry run and review the preview.";
             }
 
             return IsDryRun
-                ? "Droogloop gecontroleerd: stop, schakel live bewust in en bekijk de verse diff."
-                : "Setup gereed: start live en bevestig de verse diff; standaardkeuze blijft Nee.";
+                ? "Dry run reviewed: stop, deliberately enable live mode, and inspect the fresh diff."
+                : "Setup ready: start live and confirm the fresh diff; the default choice remains No.";
         }
     }
 
@@ -991,11 +991,11 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
 
             SelectedFohWing = DiscoveredWings[0];
             SelectedStageWing = DiscoveredWings[1];
-            DiscoveryStatus = "2 gesimuleerde WINGs beschikbaar.";
+            DiscoveryStatus = "2 simulated WINGs available.";
         }
         else if (demoMode)
         {
-            DiscoveryStatus = "Demo-netwerk offline; alleen opgeslagen pins en lokale cache beschikbaar.";
+            DiscoveryStatus = "Demo network offline; only saved pins and local cache are available.";
         }
 
         var load = await configStore.LoadAsync();
@@ -1005,7 +1005,7 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
         }
         else
         {
-            ChannelMappings.Add(new ChannelMappingViewModel(1, 1, "Kanaal 1"));
+            ChannelMappings.Add(new ChannelMappingViewModel(1, 1, "Channel 1"));
             AttachMappingHandlers();
             ApplySafeDefaultScopes();
         }
@@ -1014,23 +1014,23 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
         {
             case ConfigLoadStatus.RecoveredFromBackup:
                 SetProblem(
-                    "Configuratie hersteld",
-                    "De primaire configuratie was niet leesbaar; de vorige geldige backup is geladen.");
+                    "Configuration restored",
+                    "The primary configuration was unreadable; the previous valid backup was loaded.");
                 break;
             case ConfigLoadStatus.CorruptQuarantined:
                 SetProblem(
-                    "Beschadigde configuratie geïsoleerd",
-                    $"Veilige standaardwaarden zijn geladen. Bestand: {load.QuarantinedPath}");
+                    "Corrupted configuration isolated",
+                    $"Safe default values were loaded. File: {load.QuarantinedPath}");
                 break;
             case ConfigLoadStatus.UnsupportedSchema:
                 SetProblem(
-                    "Configuratieversie niet ondersteund",
-                    load.Message ?? "Werk WingSync bij of maak een nieuwe configuratie.");
+                    "Configuration version not supported",
+                    load.Message ?? "Update WingSync or create a new configuration.");
                 break;
             case ConfigLoadStatus.Failed:
                 SetProblem(
-                    "Configuratie kon niet worden gelezen",
-                    load.Message ?? "Controleer de toegangsrechten van de lokale opslagmap.");
+                    "Configuration could not be read",
+                    load.Message ?? "Check the access permissions of the local storage folder.");
                 break;
         }
 
@@ -1048,7 +1048,7 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
 
     private async Task DiscoverAsync(bool silent)
     {
-        DiscoveryStatus = "Zoeken op actieve netwerkadapters…";
+        DiscoveryStatus = "Searching active network adapters…";
         try
         {
             var result = await discoveryService.DiscoverAsync();
@@ -1090,9 +1090,9 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
             }
             DiscoveryStatus = result.Wings.Count switch
             {
-                0 => "Geen WING gevonden.",
-                1 => "1 WING gevonden; wijs de tweede console handmatig toe.",
-                _ => $"{result.Wings.Count} WINGs gevonden.",
+                0 => "No WING found.",
+                1 => "1 WING found; assign the second console manually.",
+                _ => $"{result.Wings.Count} WINGs found.",
             };
 
             if (result.Issues.Count > 0)
@@ -1101,7 +1101,7 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
                     new DiagnosticEvent(
                         DiagnosticSeverity.Warning,
                         "DISCOVERY_ADAPTER_ISSUES",
-                        $"{result.Issues.Count} adapterprobe(s) gaven een probleem.",
+                        $"{result.Issues.Count} adapter probe(s) reported a problem.",
                         "Discovery",
                         DateTimeOffset.UtcNow));
             }
@@ -1109,14 +1109,14 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
             if (!silent && result.Wings.Count == 0)
             {
                 SetProblem(
-                    "Geen consoles gevonden",
-                    "Controleer de control-netwerkkabels, IPv4-adapters en Windows Firewall.");
+                    "No consoles found",
+                    "Check the control-network cables, IPv4 adapters, and Windows Firewall.");
             }
         }
         catch (Exception exception)
         {
-            DiscoveryStatus = $"Zoeken mislukt: {exception.Message}";
-            SetProblem("Discovery mislukt", exception.Message);
+            DiscoveryStatus = $"Search failed: {exception.Message}";
+            SetProblem("Discovery failed", exception.Message);
             diagnostics.Record(
                 new DiagnosticEvent(
                     DiagnosticSeverity.Error,
@@ -1141,11 +1141,11 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
         if (string.IsNullOrWhiteSpace(configuration.Foh.IpAddress) ||
             string.IsNullOrWhiteSpace(configuration.Monitor.IpAddress))
         {
-            SetProblem("Verbindingstest niet mogelijk", "Vul voor beide consoles een IP-adres in.");
+            SetProblem("Connection test not possible", "Enter an IP address for both consoles.");
             return;
         }
 
-        DiscoveryStatus = "Identiteiten, WAPI-verbinding en statusreadback testen…";
+        DiscoveryStatus = "Testing identities, WAPI connection, and status readback…";
         IWingSession? foh = null;
         IWingSession? stage = null;
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
@@ -1161,11 +1161,11 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
                     StringComparison.OrdinalIgnoreCase))
             {
                 throw new InvalidOperationException(
-                    "FOH en podium werden als dezelfde fysieke console geïdentificeerd.");
+                    "FOH and stage were identified as the same physical console.");
             }
 
             foh = sessionFactory.Create("FOH-test");
-            stage = sessionFactory.Create("Podium-test");
+            stage = sessionFactory.Create("Stage-test");
             await Task.WhenAll(
                 foh.ConnectAsync(configuration.Foh, timeout.Token),
                 stage.ConnectAsync(configuration.Monitor, timeout.Token));
@@ -1179,13 +1179,13 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
             var stageStatus = await stageStatusTask;
 
             DiscoveryStatus =
-                $"WAPI gezond: {fohIdentity.Name} ({fohStatus.Count} statuswaarden) en " +
-                $"{stageIdentity.Name} ({stageStatus.Count} statuswaarden).";
+                $"WAPI healthy: {fohIdentity.Name} ({fohStatus.Count} status values) and " +
+                $"{stageIdentity.Name} ({stageStatus.Count} status values).";
             connectionTestSucceeded = true;
             var testedAt = DateTimeOffset.Now;
             fohLastData = FormatLastSeen(testedAt);
             stageLastData = FormatLastSeen(testedAt);
-            SetConsoleStatus("Identiteit bevestigd", Green, GreenSoft);
+            SetConsoleStatus("Identity confirmed", Green, GreenSoft);
             RefreshConsolePresentation();
             RaiseSetupProperties();
             ClearProblem();
@@ -1194,36 +1194,36 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
                     DiagnosticSeverity.Information,
                     "CONNECTION_TEST_OK",
                     DiscoveryStatus,
-                    "Netwerk",
+                    "Network",
                     DateTimeOffset.UtcNow));
         }
         catch (OperationCanceledException) when (timeout.IsCancellationRequested)
         {
             connectionTestSucceeded = false;
             RaiseSetupProperties();
-            const string message = "De verbindingstest overschreed de veilige timeout van 30 seconden.";
+            const string message = "The connection test exceeded the safe timeout of 30 seconds.";
             DiscoveryStatus = message;
-            SetProblem("Verbindingstest timeout", message);
+            SetProblem("Connection test timeout", message);
             diagnostics.Record(
                 new DiagnosticEvent(
                     DiagnosticSeverity.Error,
                     "CONNECTION_TEST_TIMEOUT",
                     message,
-                    "Netwerk",
+                    "Network",
                     DateTimeOffset.UtcNow));
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
             connectionTestSucceeded = false;
             RaiseSetupProperties();
-            DiscoveryStatus = $"Verbindingstest mislukt: {exception.Message}";
-            SetProblem("Verbindingstest mislukt", exception.Message);
+            DiscoveryStatus = $"Connection test failed: {exception.Message}";
+            SetProblem("Connection test failed", exception.Message);
             diagnostics.Record(
                 new DiagnosticEvent(
                     DiagnosticSeverity.Error,
                     "CONNECTION_TEST_FAILED",
                     exception.Message,
-                    "Netwerk",
+                    "Network",
                     DateTimeOffset.UtcNow));
         }
         finally
@@ -1247,14 +1247,14 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
         await configStore.SaveAsync(CreatePersistedSafeConfiguration(configuration));
         activeConfiguration = configuration;
         ValidationSummary =
-            $"Opgeslagen om {DateTime.Now:HH:mm:ss}; live- en hoog-risicotoestemming blijven alleen in deze sessie.";
+            $"Saved at {DateTime.Now:HH:mm:ss}; live and high-risk approval remain only in this session.";
         ValidationBrush = Green;
         diagnostics.Record(
             new DiagnosticEvent(
                 DiagnosticSeverity.Information,
                 "CONFIG_SAVED",
-                "Configuratie atomisch opgeslagen.",
-                "Configuratie",
+                "Configuration saved atomically.",
+                "Configuration",
                 DateTimeOffset.UtcNow));
     }
 
@@ -1263,8 +1263,8 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
         if (!BothIdentitiesPinned)
         {
             SetProblem(
-                "Setup nog niet klaar",
-                "Wijs beide consoles toe en controleer de zichtbare serienummers.");
+                "Setup not ready",
+                "Assign both consoles and verify the visible serial numbers.");
             SelectedPageIndex = 1;
             return;
         }
@@ -1278,8 +1278,8 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
         if (!IsDryRun && !hasCompletedDryRun)
         {
             SetProblem(
-                "Droogloop vereist",
-                "Voer na de laatste configuratiewijziging eerst een droogloop uit en stop die bewust.");
+                "Dry run required",
+                "After the latest configuration change, first run a dry run and stop it deliberately.");
             SelectedPageIndex = 1;
             return;
         }
@@ -1296,8 +1296,8 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
         if (!VerifyEveryWrite && !IsDryRun)
         {
             SetProblem(
-                "Readback is verplicht",
-                "Live synchronisatie kan niet starten zonder verificatie van iedere write.");
+                "Readback is required",
+                "Live synchronization cannot start without verification of every write.");
             return;
         }
 
@@ -1306,8 +1306,8 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
              string.IsNullOrWhiteSpace(configuration.Monitor.ExpectedSerial)))
         {
             SetProblem(
-                "Console-identiteit niet vastgezet",
-                "Zoek beide consoles en wijs ze toe voordat live writes kunnen worden geactiveerd.");
+                "Console identity not pinned",
+                "Find both consoles and assign them before live writes can be enabled.");
             SelectedPageIndex = 1;
             return;
         }
@@ -1329,7 +1329,7 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
         }
         catch (Exception exception)
         {
-            SetProblem("Starten mislukt", exception.Message);
+            SetProblem("Start failed", exception.Message);
             diagnostics.Record(
                 new DiagnosticEvent(
                     DiagnosticSeverity.Critical,
@@ -1349,7 +1349,7 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
         {
             var preview = coordinator.PendingInitialPreview ??
                 throw new InvalidOperationException(
-                    "De live synchronisatie wachtte zonder geldige verse verschilpreview.");
+                    "Live synchronization was waiting without a valid fresh diff preview.");
             var source = configuration.Direction == SyncDirection.FohToMonitor
                 ? configuration.Foh
                 : configuration.Monitor;
@@ -1389,7 +1389,7 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
                 {
                     await coordinator.StopAsync(CancellationToken.None);
                     throw new InvalidOperationException(
-                        "De consoles bleven tijdens bevestiging wijzigen. Live writes zijn niet geactiveerd.");
+                        "The consoles kept changing during confirmation. Live writes were not activated.");
                 }
 
                 // A fresh preview is now pending; the next loop requires a new confirmation.
@@ -1433,12 +1433,12 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
                 entry.Disposition))
             .ToArray();
         var previewPrefix = previewWasReplaced
-            ? "Nieuwe preview na consolewijziging. "
+            ? "New preview after console change. "
             : string.Empty;
         return new LiveDiffReviewViewModel(
             $"{source.IpAddress} · S/N {source.ExpectedSerial}",
             $"{target.IpAddress} · S/N {target.ExpectedSerial}",
-            $"Richting: {DirectionSummaryText}",
+            $"Direction: {DirectionSummaryText}",
             $"{previewPrefix}Scopes: {enabledScopes}",
             $"Mappings: {configuration.Channels.InputChannels.Count} INPUT · " +
             $"{configuration.Channels.AuxChannels.Count} AUX",
@@ -1550,7 +1550,7 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
         if (!configuration.Safety.DryRun || configuration.Safety.AllowHighRiskWrites)
         {
             ConfigurationSafetyNotice =
-                "Veilige herstart: opgeslagen live- en hoog-risicotoestemming is ingetrokken; begin opnieuw met verbindingstest en droogloop.";
+                "Safe restart: saved live and high-risk approval were revoked; begin again with the connection test and dry run.";
         }
 
         var selectedScopes = configuration.Scopes.ToHashSet();
@@ -1602,8 +1602,8 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
         if (overwritesCustomMapping &&
             MessageBox.Show(
                 Application.Current?.MainWindow,
-                "De huidige kanaalmapping wordt vervangen door INPUT 1 → 1 tot en met 40 → 40.\n\nDoorgaan?",
-                "Standaardmapping invullen",
+                "The current channel mapping will be replaced by INPUT 1 → 1 through 40 → 40.\n\nContinue?",
+                "Fill standard mapping",
                 MessageBoxButton.YesNo,
                 MessageBoxImage.Warning,
                 MessageBoxResult.No) != MessageBoxResult.Yes)
@@ -1729,8 +1729,8 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
             }
 
             ConfigurationSafetyNotice = resetToSafeMode
-                ? "Configuratie gewijzigd: live-toestemming is ingetrokken en droogloop is opnieuw ingeschakeld."
-                : "Configuratie gewijzigd: voer de verbindingstest en droogloop opnieuw uit.";
+                ? "Configuration changed: live approval was revoked and dry run was re-enabled."
+                : "Configuration changed: rerun the connection test and dry run.";
             OnPropertyChanged(nameof(StartButtonText));
             OnPropertyChanged(nameof(RunModeText));
             OnPropertyChanged(nameof(RunModeBackground));
@@ -1803,11 +1803,11 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
                 mapping.SourceChannel > maximum ||
                 mapping.TargetChannel < WingChannelLimits.FirstInput ||
                 mapping.TargetChannel > maximum
-                    ? $"Buiten bereik 1–{maximum}"
+                    ? $"Out of range 1–{maximum}"
                     : duplicateSources.Contains((mapping.IsAux, mapping.SourceChannel))
-                        ? "Dubbele bron"
+                        ? "Duplicate source"
                         : duplicateTargets.Contains((mapping.IsAux, mapping.TargetChannel))
-                            ? "Dubbel doel"
+                            ? "Duplicate target"
                             : "OK";
         }
     }
@@ -1828,17 +1828,17 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
             .ToArray();
         if (errors.Length > 0)
         {
-            ValidationSummary = $"{errors.Length} fout(en): {errors[0].Message}";
+            ValidationSummary = $"{errors.Length} error(s): {errors[0].Message}";
             ValidationBrush = Red;
         }
         else if (warnings.Length > 0)
         {
-            ValidationSummary = $"{warnings.Length} waarschuwing(en): {warnings[0].Message}";
+            ValidationSummary = $"{warnings.Length} warning(s): {warnings[0].Message}";
             ValidationBrush = Orange;
         }
         else
         {
-            ValidationSummary = "Configuratie is geldig.";
+            ValidationSummary = "Configuration is geldig.";
             ValidationBrush = Green;
         }
     }
@@ -1848,14 +1848,14 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
         {
             OverallStatusText = newStatus.State switch
             {
-                SyncCoordinatorState.Stopped => "Niet gestart",
-                SyncCoordinatorState.RunningDryRun => "Droogloop actief",
-                SyncCoordinatorState.RunningLive => "Live actief",
-                SyncCoordinatorState.ApplyingLive => "Live toepassen",
-                SyncCoordinatorState.Reconnecting => "Opnieuw verbinden",
-                SyncCoordinatorState.Paused => "Gepauzeerd",
-                SyncCoordinatorState.Faulted => "Fout",
-                _ => "Bezig",
+                SyncCoordinatorState.Stopped => "Not started",
+                SyncCoordinatorState.RunningDryRun => "Dry run active",
+                SyncCoordinatorState.RunningLive => "Live active",
+                SyncCoordinatorState.ApplyingLive => "Applying live",
+                SyncCoordinatorState.Reconnecting => "Reconnecting",
+                SyncCoordinatorState.Paused => "Paused",
+                SyncCoordinatorState.Faulted => "Error",
+                _ => "Busy",
             };
             OverallStatusBrush = newStatus.State switch
             {
@@ -1869,10 +1869,10 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
             FlowStatusText = newStatus.State switch
             {
                 SyncCoordinatorState.RunningDryRun => "PREVIEW",
-                SyncCoordinatorState.RunningLive => "SYNCHRONISEERT",
-                SyncCoordinatorState.ApplyingLive => "SCHRIJFT + LEEST TERUG",
-                SyncCoordinatorState.Reconnecting => "GEPAUZEERD",
-                SyncCoordinatorState.Paused => "GEBLOKKEERD",
+                SyncCoordinatorState.RunningLive => "SYNCHRONIZING",
+                SyncCoordinatorState.ApplyingLive => "WRITING + READING BACK",
+                SyncCoordinatorState.Reconnecting => "PAUSED",
+                SyncCoordinatorState.Paused => "BLOCKED",
                 _ => newStatus.State.ToString().ToUpperInvariant(),
             };
             FlowBrush = OverallStatusBrush;
@@ -1884,7 +1884,7 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
             var reconnecting = newStatus.State is SyncCoordinatorState.Connecting
                 or SyncCoordinatorState.Reconnecting;
             SetConsoleStatus(
-                connected ? "Verbonden" : reconnecting ? "Verbinden…" : "Offline",
+                connected ? "Connected" : reconnecting ? "Connecting…" : "Offline",
                 connected ? Green : reconnecting ? Orange : Gray,
                 connected ? GreenSoft : reconnecting ? OrangeSoft : GraySoft);
             var snapshotReady = newStatus.State is
@@ -1896,24 +1896,24 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
             {
                 fohLastData = FormatLastSeen(newStatus.ChangedAt);
                 stageLastData = FormatLastSeen(newStatus.ChangedAt);
-                FohCacheSummary = "Live snapshot · cache wordt lokaal bijgewerkt";
-                StageCacheSummary = "Live snapshot · cache wordt lokaal bijgewerkt";
+                FohCacheSummary = "Live snapshot · cache is updated locally";
+                StageCacheSummary = "Live snapshot · cache is updated locally";
                 RefreshConsolePresentation();
             }
 
-            CacheStatus = connected ? "Live vers" : "Offline cache";
+            CacheStatus = connected ? "Live fresh" : "Offline cache";
             CacheAge = connected
                 ? $"snapshot {FormatLastSeen(newStatus.ChangedAt)}"
-                : "laatst bekende toestand; nooit automatisch teruggeschreven";
+                : "last known state; never automatically written back";
 
             if (newStatus.State is SyncCoordinatorState.Paused or SyncCoordinatorState.Faulted)
             {
-                SetProblem("Synchronisatie gepauzeerd", newStatus.Detail);
+                SetProblem("Synchronization paused", newStatus.Detail);
             }
             else if (
                 (newStatus.State is
                     SyncCoordinatorState.RunningDryRun or SyncCoordinatorState.RunningLive) &&
-                PrimaryProblemTitle == "Synchronisatie gepauzeerd")
+                PrimaryProblemTitle == "Synchronization paused")
             {
                 ClearProblem();
             }
@@ -1985,8 +1985,8 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
                 sourceToken,
                 targetToken,
                 diagnosticEvent.Code == "PARAMETER_BLOCKED"
-                    ? "Geblokkeerd"
-                    : "Uitvoerbaar"));
+                    ? "Blocked"
+                    : "Executable"));
         var count = Interlocked.Increment(ref previewTokenAuditCount);
         while (count > MaximumPreviewAuditEntries &&
                previewTokenAudit.TryDequeue(out _))
@@ -2004,9 +2004,9 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
 
         return SelectedActivityFilter switch
         {
-            "Problemen" => activity.Severity >= DiagnosticSeverity.Warning,
+            "Problems" => activity.Severity >= DiagnosticSeverity.Warning,
             "Writes" => activity.Message.Contains('→', StringComparison.Ordinal),
-            "Netwerk" => activity.Source.Contains("Netwerk", StringComparison.OrdinalIgnoreCase)
+            "Network" => activity.Source.Contains("Network", StringComparison.OrdinalIgnoreCase)
                 || activity.Message.Contains("connect", StringComparison.OrdinalIgnoreCase)
                 || activity.Message.Contains("WING", StringComparison.OrdinalIgnoreCase),
             _ => true,
@@ -2020,7 +2020,7 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
             new DiagnosticEvent(
                 DiagnosticSeverity.Information,
                 "ACTIVITY_VIEW_CLEARED",
-                "De in-memory activiteitweergave is gewist; logbestanden zijn behouden.",
+                "The in-memory activity view was cleared; log files were kept.",
                 "UI",
                 DateTimeOffset.UtcNow));
     }
@@ -2028,23 +2028,23 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
     private async Task ExportSupportBundleAsync()
     {
         const string privacyNotice =
-            "WingSync maakt een diagnosepakket met configuratiestructuur, statuscodes, " +
+            "WingSync creates a diagnostic bundle with configuration structure, status codes, " +
             "tijdstippen en loggebeurtenissen.\n\n" +
-            "IP-adressen, serienummers, lokale gebruikerspaden en WING-parameterwaarden " +
-            "worden standaard geredigeerd. Cachebestanden en consolesnapshots worden niet " +
+            "IP addresses, serial numbers, local user paths, and WING parameter values " +
+            "are redacted by default. Cache files and console snapshots are not " +
             "opgenomen.\n\nDoorgaan?";
         var owner = Application.Current?.MainWindow;
         var confirmation = owner is null
             ? MessageBox.Show(
                 privacyNotice,
-                "WingSync supportpakket maken",
+                "Create WingSync support bundle",
                 MessageBoxButton.YesNo,
                 MessageBoxImage.Information,
                 MessageBoxResult.No)
             : MessageBox.Show(
                 owner,
                 privacyNotice,
-                "WingSync supportpakket maken",
+                "Create WingSync support bundle",
                 MessageBoxButton.YesNo,
                 MessageBoxImage.Information,
                 MessageBoxResult.No);
@@ -2075,13 +2075,13 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
             new DiagnosticEvent(
                 DiagnosticSeverity.Information,
                 "SUPPORT_BUNDLE_EXPORTED",
-                "Een geredigeerd supportpakket is gemaakt.",
+                "A redacted support bundle was created.",
                 "Support",
                 DateTimeOffset.UtcNow));
-        const string completedTitle = "WingSync supportpakket";
+        const string completedTitle = "WingSync support bundle";
         var completedMessage =
-            $"Geredigeerd supportpakket opgeslagen:\n{bundlePath}\n\n" +
-            "IP-adressen, serienummers en WING-parameterwaarden zijn verwijderd.";
+            $"Redacted support bundle saved:\n{bundlePath}\n\n" +
+            "IP addresses, serial numbers, and WING parameter values were removed.";
         if (owner is null)
         {
             MessageBox.Show(
@@ -2116,7 +2116,7 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
     {
         if (IsRunning)
         {
-            SetProblem("Cache is in gebruik", "Stop de synchronisatie voordat je de cache vernieuwt.");
+            SetProblem("Cache is in use", "Stop synchronization before rebuilding the cache.");
             return;
         }
 
@@ -2124,12 +2124,12 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
             dataDirectory,
             $"cache-reset-{DateTime.Now:yyyyMMdd-HHmmss-fff}-{Guid.NewGuid():N}");
         await cacheSink.ResetAsync(quarantine);
-        CacheStatus = "Vernieuwd";
-        CacheAge = $"vorige cache bewaard als {Path.GetFileName(quarantine)}";
-        FohCacheSummary = "Geen lokale snapshot";
-        StageCacheSummary = "Geen lokale snapshot";
-        fohLastData = "nog geen snapshot";
-        stageLastData = "nog geen snapshot";
+        CacheStatus = "Rebuilt";
+        CacheAge = $"previous cache kept as {Path.GetFileName(quarantine)}";
+        FohCacheSummary = "No local snapshot";
+        StageCacheSummary = "No local snapshot";
+        fohLastData = "no snapshot yet";
+        stageLastData = "no snapshot yet";
         RefreshConsolePresentation();
     }
 
@@ -2140,7 +2140,7 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
             $"Status: {coordinator.Status.State}\n" +
             $"Detail: {coordinator.Status.Detail}\n" +
             $"FOH: {FohName} {FohIp} {FohFirmware}\n" +
-            $"Podium: {StageName} {StageIp} {StageFirmware}\n" +
+            $"Stage: {StageName} {StageIp} {StageFirmware}\n" +
             $"Mappings: {ChannelMappings.Count(static mapping => mapping.IsEnabled)}\n" +
             $"Scopes: {string.Join(",", ScopeSelections.Where(static scope => scope.IsSelected).Select(static scope => scope.DisplayName))}\n" +
             $"Dropped logs: {diagnostics.DroppedEntries}";
@@ -2154,7 +2154,7 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
             return;
         }
 
-        SetProblem("Actie mislukt", exception.Message);
+        SetProblem("Action failed", exception.Message);
         diagnostics.Record(
             new DiagnosticEvent(
                 DiagnosticSeverity.Error,
@@ -2183,16 +2183,16 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
                     DateTimeOffset.UtcNow));
             await coordinator.StopAsync(CancellationToken.None);
             SetProblem(
-                "Noodstop uitgevoerd",
-                "Een onverwachte applicatiefout is opgevangen. Beide WAPI-verbindingen zijn gesloten.");
+                "Emergency stop executed",
+                "An unexpected application error was caught. Both WAPI connections were closed.");
             RaiseRunProperties();
             return true;
         }
         catch (Exception stopException)
         {
             SetProblem(
-                "Noodstop niet bevestigd",
-                $"De verbindingen konden niet gecontroleerd worden gesloten: {stopException.Message}");
+                "Emergency stop not confirmed",
+                $"The connections could not be closed in a controlled way: {stopException.Message}");
             return false;
         }
     }
@@ -2263,9 +2263,9 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
             (stagePresentation.HasSnapshot ? 1 : 0);
         CacheStatus = available switch
         {
-            2 => "2 consoles lokaal",
-            1 => "1 console lokaal",
-            _ => "Cache leeg",
+            2 => "2 local consoles",
+            1 => "1 local console",
+            _ => "Cache empty",
         };
         var latest = new[]
             {
@@ -2275,8 +2275,8 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
             .Where(static timestamp => timestamp is not null)
             .Max();
         CacheAge = latest is null
-            ? "nog geen live snapshot"
-            : $"laatste lokale snapshot {FormatLastSeen(latest)} · alleen voor weergave";
+            ? "no live snapshot yet"
+            : $"last local snapshot {FormatLastSeen(latest)} · display only";
         RefreshConsolePresentation();
     }
 
@@ -2306,10 +2306,10 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
                 WingStateCacheLoadStatus.RecoveredFromBackup)
         {
             var recovered = load.Status == WingStateCacheLoadStatus.RecoveredFromBackup
-                ? " · backup hersteld"
+                ? " · backup restored"
                 : string.Empty;
             return new CachePresentation(
-                $"{load.Snapshot.Values.Count} waarden · offline/stale{recovered}",
+                $"{load.Snapshot.Values.Count} values · offline/stale{recovered}",
                 FormatLastSeen(load.Snapshot.CapturedAtUtc),
                 load.Snapshot.CapturedAtUtc,
                 true);
@@ -2317,15 +2317,15 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
 
         var summary = load.Status switch
         {
-            WingStateCacheLoadStatus.Missing => "Geen lokale snapshot",
-            WingStateCacheLoadStatus.CorruptQuarantined => "Beschadigde cache geïsoleerd",
+            WingStateCacheLoadStatus.Missing => "No local snapshot",
+            WingStateCacheLoadStatus.CorruptQuarantined => "Corrupted cache isolated",
             WingStateCacheLoadStatus.IdentityMismatchQuarantined =>
-                "Cache-identiteit kwam niet overeen; geïsoleerd",
-            WingStateCacheLoadStatus.UnsupportedSchema => "Cacheversie niet ondersteund",
-            WingStateCacheLoadStatus.Failed => "Cache kon niet worden gelezen",
-            _ => "Geen bruikbare lokale snapshot",
+                "Cache identity did not match; isolated",
+            WingStateCacheLoadStatus.UnsupportedSchema => "Cache version not supported",
+            WingStateCacheLoadStatus.Failed => "Cache could not be read",
+            _ => "No usable local snapshot",
         };
-        return new CachePresentation(summary, "nog geen snapshot", null, false);
+        return new CachePresentation(summary, "no snapshot yet", null, false);
     }
 
     private void SetConsoleStatus(string text, Brush foreground, Brush background)
@@ -2492,7 +2492,7 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
                     DiagnosticSeverity.Warning,
                     "CONNECTION_TEST_CLEANUP_FAILED",
                     exception.Message,
-                    "Netwerk",
+                    "Network",
                     DateTimeOffset.UtcNow));
         }
 
@@ -2509,7 +2509,7 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
                     DiagnosticSeverity.Warning,
                     "CONNECTION_TEST_DISPOSE_FAILED",
                     exception.Message,
-                    "Netwerk",
+                    "Network",
                     DateTimeOffset.UtcNow));
         }
     }
@@ -2519,27 +2519,27 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
         var definitions =
             new (SyncScope[] Scopes, string Name, string Description, string AutomationId)[]
         {
-            ([SyncScope.Cust], "CUST", "Naam, kleur, icoon en licht", "Scope-Cust"),
-            ([SyncScope.Tags], "TAGS", "Tags en DCA-/mutetoewijzingen", "Scope-Tags"),
-            ([SyncScope.Conn], "CONN", "Bron A/B en inputselectie", "Scope-Conn"),
-            ([SyncScope.In], "IN", "Trim, balance en fase", "Scope-In"),
-            ([SyncScope.Filter], "FILTER", "HPF, LPF, tilt en all-pass", "Scope-Filter"),
-            ([SyncScope.Delay], "DELAY", "Inputdelay", "Scope-Delay"),
-            ([SyncScope.Gate], "GATE", "Gate en sidechain", "Scope-Gate"),
-            ([SyncScope.Dyn], "DYN", "Dynamics en sidechain", "Scope-Dyn"),
-            ([SyncScope.Pre], "PRE", "Pre-inserttoewijzing", "Scope-Pre"),
-            ([SyncScope.Post], "POST", "Post-inserttoewijzing", "Scope-Post"),
-            ([SyncScope.Eq], "EQ", "EQ en pre-send EQ", "Scope-Eq"),
-            ([SyncScope.Pan], "PAN", "Pan en width", "Scope-Pan"),
+            ([SyncScope.Cust], "CUST", "Name, color, icon, and light", "Scope-Cust"),
+            ([SyncScope.Tags], "TAGS", "Tags and DCA/mute assignments", "Scope-Tags"),
+            ([SyncScope.Conn], "CONN", "Source A/B and input selection", "Scope-Conn"),
+            ([SyncScope.In], "IN", "Trim, balance, and phase", "Scope-In"),
+            ([SyncScope.Filter], "FILTER", "HPF, LPF, tilt, and all-pass", "Scope-Filter"),
+            ([SyncScope.Delay], "DELAY", "Input delay", "Scope-Delay"),
+            ([SyncScope.Gate], "GATE", "Gate and sidechain", "Scope-Gate"),
+            ([SyncScope.Dyn], "DYN", "Dynamics and sidechain", "Scope-Dyn"),
+            ([SyncScope.Pre], "PRE", "Pre-insert assignment", "Scope-Pre"),
+            ([SyncScope.Post], "POST", "Post-insert assignment", "Scope-Post"),
+            ([SyncScope.Eq], "EQ", "EQ and pre-send EQ", "Scope-Eq"),
+            ([SyncScope.Pan], "PAN", "Pan and width", "Scope-Pan"),
             (
                 [SyncScope.Main1, SyncScope.Main2, SyncScope.Main3, SyncScope.Main4],
                 "MAIN",
-                "Alle vier main sends: levels, aan/uit en pre/post",
+                "All four main sends: levels, on/off, and pre/post",
                 "Scope-Main"),
-            ([SyncScope.Send], "BUS", "Bus- en matrixsends", "Scope-Bus"),
-            ([SyncScope.Fdr], "FADER", "Kanaalfader", "Scope-Fader"),
-            ([SyncScope.Mute], "MUTE", "Kanaalmute", "Scope-Mute"),
-            ([SyncScope.Config], "CONFIG", "Procesvolgorde en tap", "Scope-Config"),
+            ([SyncScope.Send], "BUS", "Bus and matrix sends", "Scope-Bus"),
+            ([SyncScope.Fdr], "FADER", "Channel fader", "Scope-Fader"),
+            ([SyncScope.Mute], "MUTE", "Channel mute", "Scope-Mute"),
+            ([SyncScope.Config], "CONFIG", "Process order and tap", "Scope-Config"),
         };
         var safeDefaults = AppConfiguration.SafeDefaultScopes.ToHashSet();
         return definitions.Select(definition =>
@@ -2624,8 +2624,8 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
 
         var expectedSerial = ResolveConfiguredSerial(configured, ipAddress);
         return expectedSerial is null
-            ? "NIET BEVESTIGD"
-            : $"{expectedSerial} · VERWACHT, OFFLINE NIET BEVESTIGD";
+            ? "NOT CONFIRMED"
+            : $"{expectedSerial} · VERWACHT, OFFLINE NOT CONFIRMED";
     }
 
     private static string ResolveIdentityStatus(
@@ -2635,12 +2635,12 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
     {
         if (HasPinnedIdentity(selected, ipAddress))
         {
-            return "Serienummerpin via discovery bevestigd";
+            return "Serial pin confirmed via discovery";
         }
 
         return ResolveConfiguredSerial(configured, ipAddress) is null
-            ? "Geen serienummerpin voor dit IP"
-            : "Opgeslagen pin · offline niet bevestigd";
+            ? "No serial pin for this IP"
+            : "Saved pin · offline not confirmed";
     }
 
     private static string? ResolveConfiguredSerial(
@@ -2700,7 +2700,7 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
             DateTimeOffset.UtcNow),
         new DiscoveredWing(
             "127.10.0.11",
-            "DEMO-PODIUM",
+            "DEMO-STAGE",
             "wing-rack",
             "DEMO-MON-0001",
             "3.1-demo",

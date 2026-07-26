@@ -110,8 +110,8 @@ internal static class UiScenarios
         AssertEx.Equal("MainWindow", app.MainWindow.Current.AutomationId);
         AssertEx.Equal("WingSync", app.MainWindow.Current.Name);
         app.WaitForElementName("HeaderTitleText", "Status");
-        app.WaitForElementName("OverallStatusText", "Niet gestart");
-        app.WaitForElementName("StartButton", "Test verbinding");
+        app.WaitForElementName("OverallStatusText", "Not started");
+        app.WaitForElementName("StartButton", "Test connection");
         AssertEx.True(app.FindById("StartButton").Current.IsEnabled);
         AssertEx.False(app.FindById("StopButton").Current.IsEnabled);
         app.WaitForElementNameContaining(
@@ -159,7 +159,7 @@ internal static class UiScenarios
             "The dynamic console direction must be exposed through UIA.");
         AssertEx.False(
             string.Equals(
-                "Richting van de consoleflow",
+                "Direction of console flow",
                 app.FindById("DirectionSummaryText").Current.Name,
                 StringComparison.Ordinal),
             "The direction UIA name must contain the current direction, not a static label.");
@@ -168,13 +168,13 @@ internal static class UiScenarios
             "The dynamic next step must be exposed through UIA.");
         AssertEx.False(
             string.Equals(
-                "Volgende stap",
+                "Next step",
                 app.FindById("NextStepFooterText").Current.Name,
                 StringComparison.Ordinal),
             "The footer UIA name must contain the current next step, not a static label.");
         var stopButton = app.FindById("StopButton");
         AssertEx.Contains(
-            "synchronisatiewrites",
+            "synchronization writes",
             stopButton.Current.Name,
             StringComparison.OrdinalIgnoreCase);
         AssertEx.Contains(
@@ -221,7 +221,7 @@ internal static class UiScenarios
         }
 
         app.Invoke("OpenSetupButton");
-        app.WaitForElementName("HeaderTitleText", "Synchronisatie instellen");
+        app.WaitForElementName("HeaderTitleText", "Configure synchronization");
         foreach (var id in new[]
                  {
                      "FohConsoleCombo",
@@ -332,7 +332,7 @@ internal static class UiScenarios
         AssertEx.Contains(
             "DEMO-MON-0001",
             app.FindById("StageSerialText").Current.Name);
-        app.Navigate("NavigationSync", "Synchronisatie instellen");
+        app.Navigate("NavigationSync", "Configure synchronization");
         AssertEx.Contains(
             "S/N DEMO-FOH-0001",
             app.FindById("FohConsoleCombo").Current.Name);
@@ -342,17 +342,17 @@ internal static class UiScenarios
         app.Invoke("StartButton");
         app.WaitForElementName(
             "OverallStatusText",
-            "Droogloop actief",
+            "Dry run active",
             TimeSpan.FromSeconds(10));
         app.WaitForElementName("VerifiedWritesText", "0");
         app.WaitForElementName("PreviewedWritesText", "1");
         app.Invoke("StopButton");
         app.WaitForElementName(
             "OverallStatusText",
-            "Niet gestart",
+            "Not started",
             TimeSpan.FromSeconds(10));
 
-        app.Navigate("NavigationSync", "Synchronisatie instellen");
+        app.Navigate("NavigationSync", "Configure synchronization");
         app.ToggleTo("DryRunCheckBox", ToggleState.Off);
         app.ToggleTo("AllowHighRiskWritesCheckBox", ToggleState.On);
         app.ToggleTo("Scope-Eq", ToggleState.Off);
@@ -376,20 +376,20 @@ internal static class UiScenarios
         first.Invoke("StartButton");
         first.WaitForElementName(
             "OverallStatusText",
-            "Droogloop actief",
+            "Dry run active",
             TimeSpan.FromSeconds(10));
         first.Invoke("StopButton");
         first.WaitForElementName(
             "OverallStatusText",
-            "Niet gestart",
+            "Not started",
             TimeSpan.FromSeconds(10));
         first.WaitForElementNameContaining(
             "FohCacheSummaryText",
-            "waarden",
+            "values",
             TimeSpan.FromSeconds(5));
         first.WaitForElementNameContaining(
             "StageCacheSummaryText",
-            "waarden",
+            "values",
             TimeSpan.FromSeconds(5));
         first.CloseAndWait();
 
@@ -404,7 +404,7 @@ internal static class UiScenarios
             TimeSpan.FromSeconds(5));
         second.WaitForElementNameContaining(
             "FohSerialText",
-            "OFFLINE NIET BEVESTIGD",
+            "OFFLINE NOT CONFIRMED",
             TimeSpan.FromSeconds(5));
         second.WaitForElementNameContaining(
             "StageSerialText",
@@ -412,7 +412,7 @@ internal static class UiScenarios
             TimeSpan.FromSeconds(5));
         second.WaitForElementNameContaining(
             "FohIdentityText",
-            "offline niet bevestigd",
+            "offline not confirmed",
             TimeSpan.FromSeconds(5));
         second.WaitForElementNameContaining(
             "StageCacheSummaryText",
@@ -420,11 +420,11 @@ internal static class UiScenarios
             TimeSpan.FromSeconds(5));
         AssertEx.False(
             second.FindById("FohLastDataText").Current.Name.Contains(
-                "nog geen",
+                "no ",
                 StringComparison.OrdinalIgnoreCase));
         AssertEx.False(
             second.FindById("StageLastDataText").Current.Name.Contains(
-                "nog geen",
+                "no ",
                 StringComparison.OrdinalIgnoreCase));
         AssertNoAppliedWrites(ReadAllLogs(context.DataDirectory));
         second.CloseAndWait();
@@ -446,14 +446,14 @@ internal static class UiScenarios
         AssertEx.Equal(
             "Ctrl+4",
             app.FindById("NavigationSettings").Current.AcceleratorKey);
-        app.Navigate("NavigationActivity", "Activiteit en diagnose");
-        app.Navigate("NavigationSettings", "Instellingen");
+        app.Navigate("NavigationActivity", "Activity and diagnostics");
+        app.Navigate("NavigationSettings", "Settings");
         app.Navigate("NavigationStatus", "Status");
 
         app.Invoke("StartButton");
         app.WaitForElementName(
             "OverallStatusText",
-            "Droogloop actief",
+            "Dry run active",
             TimeSpan.FromSeconds(10));
         AssertEx.Equal(
             "Ctrl+Shift+S",
@@ -461,7 +461,7 @@ internal static class UiScenarios
         app.Invoke("StopButton");
         app.WaitForElementName(
             "OverallStatusText",
-            "Niet gestart",
+            "Not started",
             TimeSpan.FromSeconds(10));
         app.CloseAndWait();
     }
@@ -469,12 +469,12 @@ internal static class UiScenarios
     private static void Navigation(UiScenarioContext context)
     {
         var app = context.Launch();
-        app.Navigate("NavigationSync", "Synchronisatie instellen");
+        app.Navigate("NavigationSync", "Configure synchronization");
         _ = app.WaitForId("MappingGrid");
-        app.Navigate("NavigationActivity", "Activiteit en diagnose");
+        app.Navigate("NavigationActivity", "Activity and diagnostics");
         _ = app.WaitForId("ActivityList");
         _ = app.WaitForId("ExportSupportButton");
-        app.Navigate("NavigationSettings", "Instellingen");
+        app.Navigate("NavigationSettings", "Settings");
         _ = app.WaitForId("DataDirectoryTextBox");
         _ = app.WaitForId("CopyDiagnosticsButton");
         app.Navigate("NavigationStatus", "Status");
@@ -485,7 +485,7 @@ internal static class UiScenarios
     private static void MappingValidation(UiScenarioContext context)
     {
         var app = context.Launch();
-        app.Navigate("NavigationSync", "Synchronisatie instellen");
+        app.Navigate("NavigationSync", "Configure synchronization");
         app.Invoke("AutoMapButton");
         app.WaitFor(
             () => app.GetGridRowCount("MappingGrid") == 40,
@@ -500,24 +500,24 @@ internal static class UiScenarios
         app.SetGridCellText("MappingGrid", row: 0, column: 2, value: "abc");
         app.WaitForElementNameContaining(
             "ValidationSummaryText",
-            "fout",
+            "error",
             TimeSpan.FromSeconds(5));
         app.WaitForEnabled("StartButton", enabled: false);
 
         app.SetGridCellText("MappingGrid", row: 0, column: 2, value: "1");
         app.WaitForElementNameContaining(
             "ValidationSummaryText",
-            "waarschuwing(en)",
+            "warning(s)",
             TimeSpan.FromSeconds(5));
         app.WaitForEnabled("StartButton", enabled: true);
-        app.WaitForElementName("StartButton", "Test verbinding");
+        app.WaitForElementName("StartButton", "Test connection");
         app.CloseAndWait();
     }
 
     private static void ConfigurationPersistence(UiScenarioContext context)
     {
         var first = context.Launch();
-        first.Navigate("NavigationSync", "Synchronisatie instellen");
+        first.Navigate("NavigationSync", "Configure synchronization");
         first.Invoke("AutoMapButton");
         first.WaitFor(
             () => first.GetGridRowCount("MappingGrid") == 40,
@@ -529,7 +529,7 @@ internal static class UiScenarios
             TimeSpan.FromSeconds(5),
             "the persisted AUX mapping");
         first.ToggleTo("Scope-Eq", ToggleState.Off);
-        first.SelectComboItem("DirectionCombo", "Podium → FOH");
+        first.SelectComboItem("DirectionCombo", "Stage → FOH");
         first.Invoke("SaveConfigurationButton");
         first.WaitForElementNameContaining(
             "ValidationSummaryText",
@@ -540,20 +540,20 @@ internal static class UiScenarios
         first.Invoke("StartButton");
         first.WaitForElementName(
             "OverallStatusText",
-            "Droogloop actief",
+            "Dry run active",
             TimeSpan.FromSeconds(10));
         first.Invoke("StopButton");
         first.WaitForElementName(
             "OverallStatusText",
-            "Niet gestart",
+            "Not started",
             TimeSpan.FromSeconds(10));
-        first.Navigate("NavigationSync", "Synchronisatie instellen");
+        first.Navigate("NavigationSync", "Configure synchronization");
         first.ToggleTo("DryRunCheckBox", ToggleState.Off);
         first.ToggleTo("AllowHighRiskWritesCheckBox", ToggleState.On);
         first.Invoke("SaveConfigurationButton");
         first.WaitForElementNameContaining(
             "ValidationSummaryText",
-            "alleen in deze sessie",
+            "only in this session",
             TimeSpan.FromSeconds(5));
         first.WaitForEnabled("SaveConfigurationButton", enabled: true);
         first.CloseAndWait();
@@ -563,17 +563,17 @@ internal static class UiScenarios
         AssertPersistedConfiguration(configPath);
 
         var second = context.Launch();
-        second.Navigate("NavigationSync", "Synchronisatie instellen");
+        second.Navigate("NavigationSync", "Configure synchronization");
         AssertEx.Equal(41, second.GetGridRowCount("MappingGrid"));
         AssertEx.Equal(ToggleState.Off, second.GetToggleState("Scope-Eq"));
         AssertEx.Equal(
-            "Podium → FOH",
+            "Stage → FOH",
             second.GetSelectedComboItemName("DirectionCombo"));
         AssertEx.Equal(ToggleState.On, second.GetToggleState("DryRunCheckBox"));
         AssertEx.Equal(
             ToggleState.Off,
             second.GetToggleState("AllowHighRiskWritesCheckBox"));
-        second.WaitForElementName("StartButton", "Test verbinding");
+        second.WaitForElementName("StartButton", "Test connection");
         second.CloseAndWait();
     }
 
@@ -585,13 +585,13 @@ internal static class UiScenarios
         app.Invoke("StartButton");
         app.WaitForElementName(
             "OverallStatusText",
-            "Droogloop actief",
+            "Dry run active",
             TimeSpan.FromSeconds(10));
         app.WaitForEnabled("StopButton", enabled: true);
         app.WaitForEnabled("StartButton", enabled: false);
-        _ = app.FindTextByName("DROOGLOOP · GEEN WRITES");
+        _ = app.FindTextByName("DRY RUN · NO WRITES");
 
-        app.Navigate("NavigationSync", "Synchronisatie instellen");
+        app.Navigate("NavigationSync", "Configure synchronization");
         foreach (var id in new[]
                  {
                      "FohIpTextBox",
@@ -612,18 +612,18 @@ internal static class UiScenarios
         app.Invoke("StopButton");
         app.WaitForElementName(
             "OverallStatusText",
-            "Niet gestart",
+            "Not started",
             TimeSpan.FromSeconds(10));
         app.WaitForEnabled("StartButton", enabled: true);
         app.Invoke("StartButton");
         app.WaitForElementName(
             "OverallStatusText",
-            "Droogloop actief",
+            "Dry run active",
             TimeSpan.FromSeconds(10));
         app.Invoke("StopButton");
         app.WaitForElementName(
             "OverallStatusText",
-            "Niet gestart",
+            "Not started",
             TimeSpan.FromSeconds(10));
         app.CloseAndWait();
 
@@ -640,25 +640,25 @@ internal static class UiScenarios
         app.Invoke("StartButton");
         app.WaitForElementName(
             "OverallStatusText",
-            "Droogloop actief",
+            "Dry run active",
             TimeSpan.FromSeconds(10));
         app.Invoke("StopButton");
         app.WaitForElementName(
             "OverallStatusText",
-            "Niet gestart",
+            "Not started",
             TimeSpan.FromSeconds(10));
         app.WaitForElementNameContaining(
             "SetupProgressIndicator",
             "Setup voltooid",
             TimeSpan.FromSeconds(5));
-        app.Navigate("NavigationSync", "Synchronisatie instellen");
+        app.Navigate("NavigationSync", "Configure synchronization");
         app.ToggleTo("DryRunCheckBox", ToggleState.Off);
         app.WaitForElementName("StartButton", "Start live");
         app.Navigate("NavigationStatus", "Status");
         app.Invoke("StartButton");
 
         var dialog = app.WaitForDialog(
-            "Verse live-preview bevestigen",
+            "Confirm fresh live preview",
             TimeSpan.FromSeconds(12));
         app.AssertDialogOwnedByMainWindow(dialog);
         app.AssertDialogSafeDefaultNoContract(dialog);
@@ -667,8 +667,8 @@ internal static class UiScenarios
         AssertEx.Contains("DEMO-FOH-0001", prompt);
         AssertEx.Contains("127.10.0.11", prompt);
         AssertEx.Contains("DEMO-MON-0001", prompt);
-        AssertEx.Contains("Verse verschillen", prompt);
-        AssertEx.Contains("Uitvoerbaar na bevestiging", prompt);
+        AssertEx.Contains("Fresh differences", prompt);
+        AssertEx.Contains("Executable after confirmation", prompt);
         AssertEx.Contains("Scopes:", prompt);
         AssertEx.Contains("CUST", prompt);
         AssertEx.Contains("Mappings:", prompt);
@@ -681,7 +681,7 @@ internal static class UiScenarios
         app.ClickDialogNo(dialog);
         app.WaitForElementName(
             "OverallStatusText",
-            "Niet gestart",
+            "Not started",
             TimeSpan.FromSeconds(12));
         app.CloseAndWait();
 
@@ -696,21 +696,21 @@ internal static class UiScenarios
         app.Invoke("StartButton");
         app.WaitForElementName(
             "OverallStatusText",
-            "Droogloop actief",
+            "Dry run active",
             TimeSpan.FromSeconds(10));
         app.Invoke("StopButton");
         app.WaitForElementName(
             "OverallStatusText",
-            "Niet gestart",
+            "Not started",
             TimeSpan.FromSeconds(10));
 
-        app.Navigate("NavigationSync", "Synchronisatie instellen");
+        app.Navigate("NavigationSync", "Configure synchronization");
         app.ToggleTo("DryRunCheckBox", ToggleState.Off);
         app.WaitForElementName("StartButton", "Start live");
         app.Navigate("NavigationStatus", "Status");
         app.Invoke("StartButton");
         var dialog = app.WaitForDialog(
-            "Verse live-preview bevestigen",
+            "Confirm fresh live preview",
             TimeSpan.FromSeconds(12));
         app.AssertDialogOwnedByMainWindow(dialog);
         app.AssertDialogSafeDefaultNoContract(dialog);
@@ -725,9 +725,9 @@ internal static class UiScenarios
                 var stop = app.TryFindById("StopButton");
                 return
                     runMode?.Current.Name ==
-                        "LIVE WORDT TOEGEPAST · WRITES + READBACK" &&
+                        "APPLYING LIVE · WRITES + READBACK" &&
                     overall?.Current.Name == "Live toepassen" &&
-                    flow?.Current.Name == "SCHRIJFT + LEEST TERUG" &&
+                    flow?.Current.Name == "WRITING + READING BACK" &&
                     stop?.Current.IsEnabled == true;
             },
             TimeSpan.FromSeconds(5),
@@ -736,7 +736,7 @@ internal static class UiScenarios
         app.Invoke("StopButton");
         app.WaitForElementName(
             "OverallStatusText",
-            "Niet gestart",
+            "Not started",
             TimeSpan.FromSeconds(12));
         app.WaitForEnabled("StartButton", enabled: true);
         app.CloseAndWait();
@@ -745,29 +745,29 @@ internal static class UiScenarios
     private static void HighRiskLiveReview(UiScenarioContext context)
     {
         var app = context.Launch();
-        app.Navigate("NavigationSync", "Synchronisatie instellen");
+        app.Navigate("NavigationSync", "Configure synchronization");
         app.ToggleTo("Scope-Mute", ToggleState.On);
         CompleteConnectionTest(app);
         app.Navigate("NavigationStatus", "Status");
         app.Invoke("StartButton");
         app.WaitForElementName(
             "OverallStatusText",
-            "Droogloop actief",
+            "Dry run active",
             TimeSpan.FromSeconds(10));
         app.Invoke("StopButton");
         app.WaitForElementName(
             "OverallStatusText",
-            "Niet gestart",
+            "Not started",
             TimeSpan.FromSeconds(10));
 
-        app.Navigate("NavigationSync", "Synchronisatie instellen");
+        app.Navigate("NavigationSync", "Configure synchronization");
         app.ToggleTo("DryRunCheckBox", ToggleState.Off);
         app.WaitForEnabled("AllowHighRiskWritesCheckBox", enabled: true);
         app.ToggleTo("AllowHighRiskWritesCheckBox", ToggleState.On);
         app.Invoke("StartButton");
 
         var dialog = app.WaitForDialog(
-            "Verse live-preview bevestigen",
+            "Confirm fresh live preview",
             TimeSpan.FromSeconds(12));
         app.AssertDialogOwnedByMainWindow(dialog);
         app.AssertDialogSafeDefaultNoContract(dialog);
@@ -787,7 +787,7 @@ internal static class UiScenarios
         app.ClickDialogNo(dialog);
         app.WaitForElementName(
             "OverallStatusText",
-            "Niet gestart",
+            "Not started",
             TimeSpan.FromSeconds(12));
         app.CloseAndWait();
 
@@ -802,11 +802,11 @@ internal static class UiScenarios
         app.Invoke("StartButton");
         app.WaitForElementName(
             "OverallStatusText",
-            "Droogloop actief",
+            "Dry run active",
             TimeSpan.FromSeconds(10));
 
         app.RequestClose();
-        var firstDialog = app.WaitForDialog("WingSync afsluiten");
+        var firstDialog = app.WaitForDialog("Close WingSync");
         app.AssertDialogDefaultNo(firstDialog);
         app.ClickDialogNo(firstDialog);
         app.WaitFor(
@@ -815,7 +815,7 @@ internal static class UiScenarios
             "the window to remain active after No");
 
         app.RequestClose();
-        var secondDialog = app.WaitForDialog("WingSync afsluiten");
+        var secondDialog = app.WaitForDialog("Close WingSync");
         app.ClickDialogYes(secondDialog);
         Thread.Sleep(30);
         app.RequestSecondCloseDuringDisposal();
@@ -825,7 +825,7 @@ internal static class UiScenarios
     private static void SupportBundle(UiScenarioContext context)
     {
         var app = context.Launch();
-        app.Navigate("NavigationSync", "Synchronisatie instellen");
+        app.Navigate("NavigationSync", "Configure synchronization");
         app.Invoke("SaveConfigurationButton");
         app.WaitForElementNameContaining(
             "ValidationSummaryText",
@@ -837,19 +837,19 @@ internal static class UiScenarios
                   Directory.EnumerateFiles(logDirectory, "*.jsonl*").Any(),
             TimeSpan.FromSeconds(5),
             "the structured log to be persisted before export");
-        app.Navigate("NavigationActivity", "Activiteit en diagnose");
+        app.Navigate("NavigationActivity", "Activity and diagnostics");
         app.Invoke("ExportSupportButton");
         var privacyDialog = app.WaitForDialog(
-            "WingSync supportpakket maken",
+            "Create WingSync support bundle",
             TimeSpan.FromSeconds(10));
         app.AssertDialogDefaultNo(privacyDialog);
         var privacyCopy = app.CollectText(privacyDialog);
-        AssertEx.Contains("IP-adressen", privacyCopy);
-        AssertEx.Contains("serienummers", privacyCopy);
-        AssertEx.Contains("WING-parameterwaarden", privacyCopy);
+        AssertEx.Contains("IP addresses", privacyCopy);
+        AssertEx.Contains("serial numbers", privacyCopy);
+        AssertEx.Contains("WING parameter values", privacyCopy);
         app.ClickDialogYes(privacyDialog);
         var dialog = app.WaitForDialog(
-            "WingSync supportpakket",
+            "WingSync support bundle",
             TimeSpan.FromSeconds(10));
         AssertEx.Contains(context.DataDirectory, app.CollectText(dialog));
         app.ClickDialogOk(dialog);
@@ -915,18 +915,18 @@ internal static class UiScenarios
         app.AssertVisibleWithinWindow("StartButton");
         app.AssertVisibleWithinWindow("StopButton");
 
-        app.Navigate("NavigationSync", "Synchronisatie instellen");
+        app.Navigate("NavigationSync", "Configure synchronization");
         app.AssertVisibleWithinWindow("FohIpTextBox");
         app.AssertVisibleWithinWindow("AutoMapButton");
         app.AssertVisibleWithinWindow("MappingGrid");
         app.AssertVisibleWithinWindow("SaveConfigurationButton");
 
-        app.Navigate("NavigationActivity", "Activiteit en diagnose");
+        app.Navigate("NavigationActivity", "Activity and diagnostics");
         app.AssertVisibleWithinWindow("ActivityFilterCombo");
         app.AssertVisibleWithinWindow("ExportSupportButton");
         app.AssertVisibleWithinWindow("ActivityList");
 
-        app.Navigate("NavigationSettings", "Instellingen");
+        app.Navigate("NavigationSettings", "Settings");
         app.AssertVisibleWithinWindow("DataDirectoryTextBox");
         app.AssertVisibleWithinWindow("RebuildCacheButton");
         app.AssertVisibleWithinWindow("CopyDiagnosticsButton");
@@ -935,7 +935,7 @@ internal static class UiScenarios
 
     private static void CompleteConnectionTest(UiAppSession app)
     {
-        app.Navigate("NavigationSync", "Synchronisatie instellen");
+        app.Navigate("NavigationSync", "Configure synchronization");
         app.Invoke("TestConnectionsButton");
         app.WaitForElementNameContaining(
             "DiscoveryStatusText",
@@ -947,7 +947,7 @@ internal static class UiScenarios
             "SetupProgressIndicator",
             "3 van vier",
             TimeSpan.FromSeconds(5));
-        app.Navigate("NavigationSync", "Synchronisatie instellen");
+        app.Navigate("NavigationSync", "Configure synchronization");
     }
 
     private static void AssertPersistedConfiguration(string configPath)

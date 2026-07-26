@@ -37,6 +37,6 @@ public sealed class WapiSessionFactory : IWingSessionFactory
 
         return candidates.FirstOrDefault(File.Exists) ??
             throw new FileNotFoundException(
-                "WingSync.WapiHost.exe werd niet naast de applicatie of in de ontwikkelbuild gevonden.");
+                "WingSync.WapiHost.exe was not found next to the application or in the development build.");
     }
 }

@@ -55,7 +55,7 @@ public sealed class WapiProcessSession : IWingSession
         {
             throw new ArgumentOutOfRangeException(
                 nameof(commandTimeout),
-                "De helper-time-out moet tussen 100 ms en 2 minuten liggen.");
+                "The helper timeout must be between 100 ms and 2 minutes.");
         }
     }
 
@@ -135,7 +135,7 @@ public sealed class WapiProcessSession : IWingSession
             // queued behind the snapshot and could let later native work execute.
             ChangeState(
                 WingSessionState.Faulted,
-                "Een WAPI-snapshot werd na dispatch geannuleerd; helper wordt veilig herstart.");
+                "A WAPI snapshot was canceled after dispatch; the helper will be safely restarted.");
             await StopProcessAsync(CancellationToken.None, forceKill: true).ConfigureAwait(false);
             throw;
         }
@@ -225,7 +225,7 @@ public sealed class WapiProcessSession : IWingSession
             }
 
             await StopProcessAsync(CancellationToken.None).ConfigureAwait(false);
-            ChangeState(WingSessionState.Disconnected, "Verbinding gesloten.");
+            ChangeState(WingSessionState.Disconnected, "Connection closed.");
         }
         finally
         {
@@ -274,7 +274,7 @@ public sealed class WapiProcessSession : IWingSession
         if (!File.Exists(helperPath))
         {
             throw new FileNotFoundException(
-                "De geïsoleerde WAPI-helper ontbreekt. Installeer WingSync opnieuw.",
+                "The isolated WAPI helper is missing. Reinstall WingSync.",
                 helperPath);
         }
 
@@ -303,7 +303,7 @@ public sealed class WapiProcessSession : IWingSession
 
         if (!process.Start())
         {
-            throw new InvalidOperationException("De WAPI-helper kon niet worden gestart.");
+            throw new InvalidOperationException("The WAPI helper could not be started.");
         }
 
         input = process.StandardInput;
@@ -335,15 +335,15 @@ public sealed class WapiProcessSession : IWingSession
                 process.HasExited ||
                 !IsCurrentProcessGeneration(generation))
             {
-                throw new IOException("De WAPI-helper is onverwacht afgesloten.");
+                throw new IOException("The WAPI helper closed unexpectedly.");
             }
 
-            var writer = input ?? throw new IOException("De WAPI-helper is onverwacht afgesloten.");
+            var writer = input ?? throw new IOException("The WAPI helper closed unexpectedly.");
             var id = Interlocked.Increment(ref requestSequence).ToString(CultureInfo.InvariantCulture);
             var command = string.Format(CultureInfo.InvariantCulture, commandTemplate, id);
             if (command.Length > MaxWireLineLength)
             {
-                throw new InvalidOperationException("Het IPC-commando is te groot.");
+                throw new InvalidOperationException("The IPC command is too large.");
             }
 
             var request = new PendingRequest(
@@ -352,7 +352,7 @@ public sealed class WapiProcessSession : IWingSession
                 generation);
             if (!pending.TryAdd(id, request))
             {
-                throw new InvalidOperationException("Kon geen unieke IPC-request-id reserveren.");
+                throw new InvalidOperationException("Could not reserve a unique IPC request ID.");
             }
 
             try
@@ -433,7 +433,7 @@ public sealed class WapiProcessSession : IWingSession
 
                 if (line.Length > MaxWireLineLength)
                 {
-                    throw new InvalidDataException("De WAPI-helper stuurde een te grote IPC-regel.");
+                    throw new InvalidDataException("The WAPI helper sent an IPC line that is too large.");
                 }
 
                 HandleOutputLine(line, generation, localReadySource);
@@ -542,7 +542,7 @@ public sealed class WapiProcessSession : IWingSession
                 break;
 
             default:
-                Record(DiagnosticSeverity.Warning, "WAPI_PROTOCOL_UNKNOWN", $"Onbekend helperbericht: {parts[0]}");
+                Record(DiagnosticSeverity.Warning, "WAPI_PROTOCOL_UNKNOWN", $"Unknown helper message: {parts[0]}");
                 break;
         }
     }
@@ -611,7 +611,7 @@ public sealed class WapiProcessSession : IWingSession
         {
             request.SnapshotCompletion.TrySetException(
                 new InvalidDataException(
-                    $"Snapshot bevat een ongeldige helper-count '{countText}'."));
+                    $"Snapshot contains an invalid helper count '{countText}'."));
             return;
         }
 
@@ -619,7 +619,7 @@ public sealed class WapiProcessSession : IWingSession
         {
             request.SnapshotCompletion.TrySetException(
                 new InvalidDataException(
-                    $"Snapshot was onvolledig: helper meldde {count}, ontvangen {request.Items.Count}."));
+                    $"Snapshot was incomplete: helper reported {count}, received {request.Items.Count}."));
             return;
         }
 
@@ -750,7 +750,7 @@ public sealed class WapiProcessSession : IWingSession
             localInput?.Dispose();
             localProcess.Dispose();
             FailAllPending(
-                new IOException("De WAPI-helper is gestopt."),
+                new IOException("The WAPI helper stopped."),
                 stoppedGeneration,
                 localReadySource);
         }
@@ -801,7 +801,7 @@ public sealed class WapiProcessSession : IWingSession
         }
 
         var exitCode = sender is Process exitedProcess ? exitedProcess.ExitCode : -1;
-        var exception = new IOException($"De WAPI-helper stopte onverwacht (exitcode {exitCode}).");
+        var exception = new IOException($"The WAPI helper stopped unexpectedly (exit code {exitCode}).");
         FailAllPending(
             exception,
             generation,
@@ -838,7 +838,7 @@ public sealed class WapiProcessSession : IWingSession
         ThrowIfDisposed();
         if (State != WingSessionState.Connected)
         {
-            throw new InvalidOperationException($"{role} is niet verbonden.");
+            throw new InvalidOperationException($"{role} is not connected.");
         }
     }
 
@@ -867,7 +867,7 @@ public sealed class WapiProcessSession : IWingSession
                 !(char.IsAsciiLetterOrDigit(character) ||
                   character is '.' or '_' or '$' or '-')))
         {
-            throw new ArgumentException("Ongeldige WAPI-tokennaam.", nameof(token));
+            throw new ArgumentException("Invalid WAPI token name.", nameof(token));
         }
 
         return normalized;
@@ -879,7 +879,7 @@ public sealed class WapiProcessSession : IWingSession
             value.Length > 255 ||
             value.IndexOfAny(['|', '\r', '\n']) >= 0)
         {
-            throw new ArgumentException("Ongeldige IPC-waarde.", parameterName);
+            throw new ArgumentException("Invalid IPC value.", parameterName);
         }
 
         return value;
@@ -893,7 +893,7 @@ public sealed class WapiProcessSession : IWingSession
         var trimmed = token.Trim().Trim('/');
         if (trimmed.Length == 0)
         {
-            throw new InvalidDataException("De WAPI-helper stuurde een lege tokennaam.");
+            throw new InvalidDataException("The WAPI helper sent an empty token name.");
         }
 
         return "/" + trimmed.Replace('.', '/').ToLowerInvariant();
@@ -907,7 +907,7 @@ public sealed class WapiProcessSession : IWingSession
         }
         catch (FormatException exception)
         {
-            throw new InvalidDataException("Ongeldige base64-data van de WAPI-helper.", exception);
+            throw new InvalidDataException("Invalid base64 data from the WAPI helper.", exception);
         }
     }
 
@@ -974,7 +974,7 @@ public sealed class WapiException : IOException
 {
     /// <summary>Initializes an exception returned by the native helper.</summary>
     public WapiException(string errorCode, string message)
-        : base($"WAPI-fout {errorCode}: {message}")
+        : base($"WAPI error {errorCode}: {message}")
     {
         ErrorCode = string.IsNullOrWhiteSpace(errorCode) ? "UNKNOWN" : errorCode;
     }

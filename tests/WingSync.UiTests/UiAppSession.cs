@@ -86,11 +86,11 @@ internal sealed class UiAppSession : IDisposable
                     var overallStatus = session.TryFindById("OverallStatusText");
                     return startButton is not null &&
                            startButton.Current.Name.Equals(
-                               demoDiscoveryOffline ? "Setup vereist" : "Test verbinding",
+                               demoDiscoveryOffline ? "Setup vereist" : "Test connection",
                                StringComparison.Ordinal) &&
                            overallStatus is not null &&
                            overallStatus.Current.Name.Equals(
-                               "Niet gestart",
+                               "Not started",
                                StringComparison.Ordinal);
                 },
                 StartupTimeout,
@@ -481,11 +481,11 @@ internal sealed class UiAppSession : IDisposable
             noButton.Current.IsEnabled && noButton.Current.IsKeyboardFocusable,
             "The safe No action must be enabled and keyboard reachable.");
         AssertEx.Contains(
-            "Veilige standaardkeuze",
+            "Safe default choice",
             noButton.Current.HelpText,
             StringComparison.OrdinalIgnoreCase);
         AssertEx.Contains(
-            "Standaardkeuze: annuleren",
+            "Default choice: cancel",
             CollectText(dialog),
             StringComparison.OrdinalIgnoreCase);
     }

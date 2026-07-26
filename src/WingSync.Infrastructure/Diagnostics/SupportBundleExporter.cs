@@ -36,7 +36,7 @@ public static partial class SupportBundleExporter
     private const string RedactedPath = "[REDACTED:PATH]";
     private const string RedactedParameterValue = "[REDACTED:PARAMETER_VALUE]";
     private const string OmittedRawMessage =
-        "Ruwe helper- of parameterinhoud is verwijderd uit het supportpakket.";
+        "Raw helper or parameter content was removed from the support bundle.";
 
     private static readonly JsonSerializerOptions IndentedJson = new()
     {
@@ -279,7 +279,7 @@ public static partial class SupportBundleExporter
                         ["eventName"] = "SUPPORT_LOG_LINE_OMITTED",
                         ["lineNumber"] = lineNumber,
                         ["message"] =
-                            "Ongeldige JSON-logregel is niet in het supportpakket opgenomen.",
+                            "Invalid JSON log line was not included in the support bundle.",
                     };
                 }
 
@@ -317,7 +317,7 @@ public static partial class SupportBundleExporter
         await writer.WriteLineAsync($"Dropped log entries: {request.DroppedLogEntries}")
             .ConfigureAwait(false);
         await writer.WriteLineAsync(
-                "Privacy: IP-adressen, serienummers, bestandslocaties en WING-parameterwaarden zijn geredigeerd.")
+                "Privacy: IP addresses, serial numbers, file locations, and WING parameter values were redacted.")
             .ConfigureAwait(false);
         await writer.FlushAsync(cancellationToken).ConfigureAwait(false);
     }
@@ -510,7 +510,7 @@ public static partial class SupportBundleExporter
     private static partial Regex Ipv6CandidateRegex();
 
     [GeneratedRegex(
-        @"(?i)(\b(?:(?:serial|serie)(?:nummer)?|s/n)\b(?:\s*(?:is|=|:))?\s*['""]?)[A-Z0-9._-]{4,64}['""]?",
+        @"(?i)(\b(?:(?:serial|serial)(?:nummer)?|s/n)\b(?:\s*(?:is|=|:))?\s*['""]?)[A-Z0-9._-]{4,64}['""]?",
         RegexOptions.CultureInvariant)]
     private static partial Regex SerialContextRegex();
 

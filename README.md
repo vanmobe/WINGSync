@@ -1,92 +1,92 @@
+\
 # WingSync
 
-WingSync is een zelfstandige Windows-app voor veilige, configureerbare
-eenrichtingssynchronisatie tussen een Behringer WING aan FOH en een WING op
-het podium. De operator kiest de bron, het doel, de kanaalmapping en de globale
-WING-secties. De app begint in droogloop, toont de verse verschilpreview en
-vereist bij livegebruik readback van iedere uitgevoerde write.
+WingSync is a standalone Windows app for safe, configurable one-way
+synchronization between a Behringer WING at FOH and a WING on stage. The
+operator selects the source, the target, the channel mapping, and the global
+WING sections. The app starts in dry run mode, shows the fresh diff preview,
+and requires readback for every executed write during live use.
 
-> **Vrijgavestatus:** de geautomatiseerde core-, integratie- en UI-suites zijn
-> groen. De fysieke identity-, read-only-, live write/readback- en
-> herstelproeven op twee WINGs zijn eveneens geslaagd. Een fysieke
-> kabelonderbreking, eventstormmeting en duurproef zijn nog **PENDING**.
-> Het pakket is daarom een niet-ondertekende interne evaluatierelease; gebruik
-> live synchronisatie nog niet tijdens een productie. Zie
-> [het test- en acceptatierapport](docs/TEST_REPORT.md).
+> **Release status:** the automated core, integration, and UI suites are
+> green. The physical identity, read-only, live write/readback, and recovery
+> tests on two WINGs have also passed. A physical cable interruption,
+> event-storm measurement, and endurance test are still **PENDING**. The
+> package is therefore an unsigned internal evaluation release; do not use
+> live synchronization during a production yet. See the
+> [test and acceptance report](docs/TEST_REPORT.md).
 
-## Belangrijkste eigenschappen
+## Key features
 
-- Ontdekking van twee WINGs met zichtbare naam, IP, model, firmware en
-  serienummer; livegebruik vereist een serial-pin voor beide rollen.
-- FOH → podium als aanbevolen richting en podium → FOH als bewuste
-  eenrichtingsoptie. Bidirectionele synchronisatie is niet toegestaan.
-- Mapping van inputkanalen 1–40 en AUX-kanalen 1–8, met controle op dubbele of
-  ongeldige bron- en doelkanalen.
-- Selectie volgens de globale WING-secties in de UI:
+- Discovery of two WINGs with visible name, IP, model, firmware, and serial
+  number; live use requires a serial pin for both roles.
+- FOH → stage as the recommended direction and stage → FOH as a deliberate
+  one-way option. Bidirectional synchronization is not allowed.
+- Mapping of input channels 1–40 and AUX channels 1–8, with validation for
+  duplicate or invalid source and target channels.
+- Selection by the global WING sections in the UI:
   `CUST`, `TAGS`, `CONN`, `IN`, `FILTER`, `DELAY`, `GATE`, `DYN`, `PRE`,
-  `POST`, `EQ`, `PAN`, `MAIN`, `BUS`, `FADER`, `MUTE` en `CONFIG`.
-  `MAIN` groepeert Main 1–4; `BUS` en `FADER` zijn de operatornamen voor de
-  interne WAPI-families `SEND` en `FDR`.
-- Een veilige droogloop → verse diff → expliciete livebevestiging. Routing,
-  inserts, tags en mixbediening blijven daarnaast achter een aparte
-  verhoogd-risicotoestemming.
-- Begrensde eventverwerking, echo-onderdrukking, reconnect met nieuwe
-  snapshots en een blokkerende pauze bij identity- of readbackproblemen.
-- Een lokale cache per fysieke console voor offline statusweergave. Cachedata
-  wordt nooit gebruikt om writes te plannen en wordt nooit naar een WING
-  teruggespeeld.
-- JSONL-diagnostiek en een supportpakket waarin IP-adressen, serienummers,
-  lokale gebruikerspaden en WING-parameterwaarden worden geredigeerd.
+  `POST`, `EQ`, `PAN`, `MAIN`, `BUS`, `FADER`, `MUTE`, and `CONFIG`.
+  `MAIN` groups Main 1–4; `BUS` and `FADER` are the operator-facing names for
+  the internal WAPI families `SEND` and `FDR`.
+- A safe flow of dry run → fresh diff → explicit live confirmation. Routing,
+  inserts, tags, and mix control also remain behind a separate high-risk
+  approval.
+- Bounded event processing, echo suppression, reconnect with fresh snapshots,
+  and a blocking pause on identity or readback problems.
+- A local cache per physical console for offline status display. Cache data is
+  never used to plan writes and is never replayed to a WING.
+- JSONL diagnostics and a support bundle that redacts IP addresses, serial
+  numbers, local user paths, and WING parameter values.
 
-## Gebruik
+## Usage
 
-De draagbare release bevat `WingSync.exe` en de geïsoleerde
-`WingSync.WapiHost.exe`; er hoeft geen .NET-runtime te worden geïnstalleerd.
-Plaats beide bestanden bij elkaar en volg daarna de
-[gebruikershandleiding](docs/USER_GUIDE.md). Voor discovery en WAPI moeten UDP
-en TCP poort 2222 op het geïsoleerde control-netwerk bereikbaar zijn.
+The portable release contains `WingSync.exe` and the isolated
+`WingSync.WapiHost.exe`; no .NET runtime needs to be installed. Place both
+files together and then follow the [user guide](docs/USER_GUIDE.md). For
+Discovery and WAPI, UDP and TCP port 2222 must be reachable on the isolated
+control network.
 
-Voor een veilige demonstratie zonder consoles:
+For a safe demonstration without consoles:
 
 ```powershell
 .\scripts\run.ps1 -Demo
 ```
 
-## Bouwen en testen
+## Building and testing
 
-Voor ontwikkeling zijn Windows x64, .NET SDK 10.0.302, CMake en de x64
-MSVC-toolchain van Visual Studio 2022 nodig. De officiële WAPI-bestanden en de
-bijbehorende SLA staan in de repository.
+For development you need Windows x64, .NET SDK 10.0.302, CMake, and the x64
+MSVC toolchain from Visual Studio 2022. The official WAPI files and the
+associated SLA are included in the repository.
 
 ```powershell
 .\scripts\test.ps1 -Configuration Release
 .\scripts\build.ps1 -Configuration Release
 ```
 
-`test.ps1` bouwt standaard eerst en voert daarna 77 core-tests, 76
-integratie-/foutinjectietests, de native helper-self-test en 14
-UI-automatiseringstests uit. De UI-tests vereisen een ontgrendelde interactieve
-Windows-desktopsessie.
+`test.ps1` builds first by default and then runs 77 core tests, 76
+integration/fault-injection tests, the native helper self-test, and 14 UI
+automation tests. The UI tests require an unlocked interactive Windows desktop
+session.
 
-`build.ps1` herhaalt de tests, publiceert de self-contained win-x64-app en
-maakt:
+`build.ps1` repeats the tests, publishes the self-contained win-x64 app, and
+creates:
 
 - `artifacts\WingSync-win-x64-internal-evaluation\`
 - `artifacts\WingSync-portable-win-x64-internal-evaluation.zip`
 - `artifacts\WingSync-portable-win-x64-internal-evaluation.zip.sha256`
 
-De build voert de volledige UI-suite ook uit tegen exact de gepubliceerde
-single-file-app én opnieuw tegen de uit de zip uitgepakte app. Het buildmanifest
-registreert bronhash, testbewijs en Authenticode-status. Zonder een vertrouwd
-code-signingcertificaat blijft de status bewust
+The build also runs the full UI suite against the exact published single-file
+app and again against the app extracted from the zip. The build manifest
+records source hash, test evidence, and Authenticode status. Without a trusted
+code-signing certificate, the status intentionally remains
 `internal-evaluation-unsigned`.
 
-Gebruik `-SkipTests` of `-SkipBuild` alleen wanneer de relevante resultaten
-voor exact dezelfde bron en configuratie al beschikbaar zijn.
+Use `-SkipTests` or `-SkipBuild` only when the relevant results are already
+available for the exact same source and configuration.
 
-## Documentatie
+## Documentation
 
-- [Gebruikershandleiding](docs/USER_GUIDE.md)
-- [Architectuur en safetygrenzen](docs/ARCHITECTURE.md)
-- [Test- en acceptatierapport](docs/TEST_REPORT.md)
-- [WAPI-licentie-informatie](LICENSES/README.md)
+- [User guide](docs/USER_GUIDE.md)
+- [Architecture and safety boundaries](docs/ARCHITECTURE.md)
+- [Test and acceptance report](docs/TEST_REPORT.md)
+- [WAPI license information](LICENSES/README.md)

@@ -1,240 +1,237 @@
-# WingSync gebruikershandleiding
+\
+# WingSync user guide
 
-WingSync volgt een live-audiowerkwijze: eerst identiteit en richting
-controleren, daarna een droogloop beoordelen en pas daarna bewust live
-inschakelen. De standaardkeuze in een livebevestiging is altijd **Nee**.
+WingSync follows a live-audio workflow: first verify identity and direction,
+then review a dry run, and only then deliberately enable live mode. The
+default choice in a live confirmation is always **No**.
 
-> **Huidige vrijgavegrens:** identity, read-only en begrensde fysieke
-> write/readback/herstelproeven zijn geslaagd. Fysieke kabelonderbreking,
-> eventstormmeting en duurtest zijn nog niet afgerond. De portable build is
-> bovendien niet Authenticode-ondertekend. Gebruik live synchronisatie daarom
-> nog niet tijdens een show; droogloop en demo zijn wel geschikt voor
-> voorbereiding en beoordeling.
+> **Current release boundary:** identity, read-only, and bounded physical
+> write/readback/recovery tests have passed. Physical cable interruption,
+> event-storm measurement, and endurance testing are not finished yet. The
+> portable build is also not Authenticode-signed. Therefore, do not use live
+> synchronization during a show yet; dry run and demo mode are suitable for
+> preparation and review.
 
-## Voorbereiding
+## Preparation
 
-1. Maak op beide WINGs een actuele showbackup.
-2. Verbind de Windows-pc en de controlpoorten van beide consoles met hetzelfde
-   geïsoleerde IPv4-control-netwerk.
-3. Laat UDP en TCP poort 2222 toe voor WingSync en
-   `WingSync.WapiHost.exe`. Een afwijkende WAPI-poort wordt niet ondersteund.
-4. Start `WingSync.exe`. De app start met **Droogloop (geen writes)** actief.
-5. Controleer in de bovenbalk altijd richting, sessiestatus en modus voordat
-   je een actie uitvoert.
+1. Create an up-to-date show backup on both WINGs.
+2. Connect the Windows PC and the control ports of both consoles to the same
+   isolated IPv4 control network.
+3. Allow UDP and TCP port 2222 for WingSync and `WingSync.WapiHost.exe`. A
+   different WAPI port is not supported.
+4. Start `WingSync.exe`. The app starts with **Dry run (no writes)** enabled.
+5. Always check the direction, session status, and mode in the top bar before
+   performing an action.
 
-De finale automatisering is uitgevoerd op Windows x64 build 26200. De app is
-self-contained; oudere Windows-builds zijn niet in deze acceptatieronde
-gevalideerd.
+Final automation was performed on Windows x64 build 26200. The app is
+self-contained; older Windows builds were not validated in this acceptance
+round.
 
-Gebruik voor training zonder hardware:
+For training without hardware:
 
 ```powershell
 .\scripts\run.ps1 -Demo
 ```
 
-## Eenvoudige setup in vier stappen
+## Simple setup in four steps
 
-De pagina **Status** toont een checklist en steeds de eerstvolgende veilige
-actie.
+The **Status** page shows a checklist and always the next safe action.
 
-### 1. Consoles vinden en identiteit vastzetten
+### 1. Find consoles and pin identity
 
-Open **Synchronisatie** en kies **Consoles zoeken**. Wijs één fysieke console
-aan FOH en de andere aan podium toe. Controleer in de keuzelijst en op de twee
-statuskaarten:
+Open **Synchronization** and choose **Find consoles**. Assign one physical
+console to FOH and the other to stage. Check in the selection list and on the
+two status cards:
 
-- consolenaam en rol;
-- IP-adres;
-- model en firmware;
-- volledig serienummer;
-- de labels **BRON** en **DOEL**.
+- console name and role;
+- IP address;
+- model and firmware;
+- full serial number;
+- the labels **SOURCE** and **TARGET**.
 
-Een zichtbaar serienummer is een hardware-pin, niet alleen beschrijvende
-informatie. Livegebruik blijft geblokkeerd wanneer een serial ontbreekt,
-wanneer hetzelfde serienummer voor beide rollen is gekozen of wanneer IP en
-serial bij een latere controle niet meer samenhoren.
+A visible serial number is a hardware pin, not just descriptive information.
+Live use remains blocked when a serial is missing, when the same serial number
+is selected for both roles, or when IP and serial no longer match during a
+later check.
 
-De aanbevolen richting is **FOH → Podium**. **Podium → FOH** is ondersteund,
-maar geeft bewust een waarschuwing. Er is geen bidirectionele modus.
+The recommended direction is **FOH → Stage**. **Stage → FOH** is supported,
+but deliberately shows a warning. There is no bidirectional mode.
 
-### 2. Scopes en kanaalmapping kiezen
+### 2. Choose scopes and channel mapping
 
-Kies alleen de globale WING-secties die voor deze workflow nodig zijn:
+Choose only the global WING sections required for this workflow:
 
-| UI-scope | Inhoud | Veilige standaard |
+| UI scope | Contents | Safe default |
 |---|---|---:|
-| `CUST` | naam, kleur, icoon en licht | aan |
-| `TAGS` | tags en DCA-/mutetoewijzingen | uit, verhoogd risico |
-| `CONN` | bron A/B en inputselectie | uit, verhoogd risico |
-| `IN` | trim, balance en fase; geen fysieke preamp of phantom | uit |
-| `FILTER` | HPF, LPF, tilt en all-pass | aan |
-| `DELAY` | inputdelay | aan |
-| `GATE` | gate, model en sidechain | aan |
-| `DYN` | dynamics, model, crossover en sidechain | aan |
-| `PRE` | pre-inserttoewijzing | uit, verhoogd risico |
-| `POST` | post-inserttoewijzing | uit, verhoogd risico |
-| `EQ` | channel- en pre-send-EQ | aan |
-| `PAN` | pan en width | uit |
-| `MAIN` | Main 1–4-toewijzing en levels | uit, verhoogd risico |
-| `BUS` | bus- en matrixsends | uit, verhoogd risico |
-| `FADER` | kanaalfader | uit, verhoogd risico |
-| `MUTE` | kanaalmute | uit, verhoogd risico |
-| `CONFIG` | procesvolgorde, tap, solo-safe en monitorconfiguratie | uit, verhoogd risico |
+| `CUST` | name, color, icon, and light | on |
+| `TAGS` | tags and DCA/mute assignments | off, high risk |
+| `CONN` | source A/B and input selection | off, high risk |
+| `IN` | trim, balance, and phase; no physical preamp or phantom | off |
+| `FILTER` | HPF, LPF, tilt, and all-pass | on |
+| `DELAY` | input delay | on |
+| `GATE` | gate, model, and sidechain | on |
+| `DYN` | dynamics, model, crossover, and sidechain | on |
+| `PRE` | pre-insert assignment | off, high risk |
+| `POST` | post-insert assignment | off, high risk |
+| `EQ` | channel and pre-send EQ | on |
+| `PAN` | pan and width | off |
+| `MAIN` | Main 1–4 assignment and levels | off, high risk |
+| `BUS` | bus and matrix sends | off, high risk |
+| `FADER` | channel fader | off, high risk |
+| `MUTE` | channel mute | off, high risk |
+| `CONFIG` | process order, tap, solo-safe, and monitor configuration | off, high risk |
 
-`MAIN`, `BUS` en `FADER` zijn de globale namen die de operator in de UI ziet.
-Intern correspondeert `MAIN` met Main 1–4, `BUS` met WAPI-sectie `SEND` en
-`FADER` met `FDR`.
+`MAIN`, `BUS`, and `FADER` are the global names the operator sees in the UI.
+Internally, `MAIN` maps to Main 1–4, `BUS` to WAPI section `SEND`, and
+`FADER` to `FDR`.
 
-Vul daarna de mapping in:
+Then fill in the mapping:
 
-- inputkanalen hebben bereik 1–40;
-- AUX-kanalen hebben bereik 1–8 en vormen een aparte reeks;
-- ieder actief bronkanaal en ieder actief doelkanaal mag per reeks maar één
-  keer voorkomen;
-- **1 → 1 invullen** vraagt bij een aangepaste lijst eerst om bevestiging met
-  standaardkeuze **Nee** en vervangt na **Ja** de lijst; controleer ze meteen;
-- een niet-oplosbare sidechainreferentie blokkeert de volledige betrokken
-  gate- of dynamics-processorgroep.
+- input channels range from 1–40;
+- AUX channels range from 1–8 and form a separate series;
+- each active source channel and each active target channel may appear only
+  once per series;
+- entering **1 → 1** first asks for confirmation with default choice **No**
+  when the list was customized, and after **Yes** replaces the list; review it
+  immediately;
+- an unresolvable sidechain reference blocks the entire affected gate or
+  dynamics processor group.
 
-**Configuratie opslaan** schrijft de configuratie atomisch naar de lokale
-datamap. Validatiefouten staan gezamenlijk onder de mapping; los ze allemaal
-op voordat je start.
+**Save configuration** writes the configuration atomically to the local data
+folder. Validation errors are shown together below the mapping; resolve all of
+them before you start.
 
-### 3. Beide verbindingen testen
+### 3. Test both connections
 
-Kies **Verbinding testen**. WingSync controleert voor beide rollen:
+Choose **Test connection**. WingSync checks for both roles:
 
-- de ontdekte IP/serial-combinatie;
-- dat FOH en podium verschillende fysieke consoles zijn;
-- een afzonderlijke WAPI-verbinding;
-- keepalive/statusreadback.
+- the discovered IP/serial combination;
+- that FOH and stage are different physical consoles;
+- an individual WAPI connection;
+- keepalive/status readback.
 
-De kaarten tonen per console wanneer voor het laatst echte data werd gelezen.
-Een discoverytijd of een lokale cache geldt niet als een geslaagde
-verbindingstest.
+The cards show when real data was last read for each console. A discovery time
+or a local cache does not count as a successful connection test.
 
-### 4. Droogloop uitvoeren en preview beoordelen
+### 4. Run dry run and review the preview
 
-Laat **Droogloop (geen writes)** aan en kies **Start droogloop**. WingSync leest
-beide consoles vers in, bouwt de mappingdiff en logt wat er zou gebeuren. Er
-wordt in deze modus geen parameterwrite naar een console gestuurd.
+Leave **Dry run (no writes)** enabled and choose **Start dry run**. WingSync
+reads both consoles fresh, builds the mapping diff, and logs what would
+happen. In this mode no parameter write is sent to any console.
 
-Beoordeel op **Status** drie afzonderlijke tellers:
+On **Status**, review three separate counters:
 
-- **Preview / gepland**: verschillen die zonder consolewrite zijn berekend;
-- **Geverifieerde live writes**: alleen werkelijk uitgevoerde writes waarvan
-  de readback overeenkwam;
-- **Geblokkeerd**: verschillen die door scope-, mapping- of safetyregels niet
-  uitvoerbaar waren.
+- **Preview / planned**: differences calculated without writing to a console;
+- **Verified live writes**: only writes actually executed whose readback
+  matched;
+- **Blocked**: differences that could not be executed because of scope,
+  mapping, or safety rules.
 
-Gebruik **Activiteit** om de exacte tokens, scopes, reconnects en problemen te
-controleren. Stop na de beoordeling. De checklist geeft daarna de veilige
-overgang naar live aan.
+Use **Activity** to inspect the exact tokens, scopes, reconnects, and
+problems. Stop after the review. The checklist then shows the safe transition
+to live mode.
 
-## Van droogloop naar live
+## From dry run to live
 
-Voer deze procedure alleen in een onderhoudsvenster uit:
+Perform this procedure only in a maintenance window:
 
-1. Controleer opnieuw de backups, richting, zichtbare serienummers, scopes en
+1. Re-check the backups, direction, visible serial numbers, scopes, and
    mapping.
-2. Stop de droogloop.
-3. Schakel **Droogloop (geen writes)** uit. Readback van iedere write is altijd
-   actief en kan niet worden uitgezet.
-4. Schakel **Scopes met verhoogd risico toestaan** alleen in wanneer de
-   geselecteerde tags, routing, inserts, mains, sends, faders, mutes of
-   configuratie ook werkelijk live mogen wijzigen.
-5. Kies **Start live**. Tijdens verbinden, snapshots en de preview staat de
-   modus op **WORDT VOORBEREID · GEEN WRITES**.
-6. Controleer in de bevestiging bron- en doel-IP, beide serial-pins, richting,
-   scopes, aantal mappings, uitvoerbare wijzigingen, geblokkeerde wijzigingen
-   en de verdeling per scope. Kies alleen dan **Ja**.
-7. Voor geselecteerde verhoogd-risicoscopes volgt een tweede, aparte
-   bevestiging van de showbackups.
-8. Na **Ja** toont WingSync tijdens de initiële toepassing
-   **LIVE WORDT TOEGEPAST · WRITES + READBACK**. In die fase zijn bevestigde
-   writes en hun verplichte readback actief. Pas na succesvolle afronding
-   volgt **LIVE ACTIEF · READBACK OK**.
+2. Stop the dry run.
+3. Disable **Dry run (no writes)**. Readback for every write is always enabled
+   and cannot be turned off.
+4. Enable **Allow high-risk scopes** only when the selected tags, routing,
+   inserts, mains, sends, faders, mutes, or configuration are truly allowed to
+   change live.
+5. Choose **Start live**. During connect, snapshots, and the preview the mode
+   is **PREPARING · NO WRITES**.
+6. In the confirmation, verify source and target IP, both serial pins,
+   direction, scopes, mapping count, executable changes, blocked changes, and
+   the breakdown per scope. Only then choose **Yes**.
+7. For selected high-risk scopes, a second separate confirmation of the show
+   backups follows.
+8. After **Yes**, WingSync shows **APPLYING LIVE · WRITES + READBACK** during
+   the initial apply. In that phase, confirmed writes and their required
+   readback are active. Only after successful completion does
+   **LIVE ACTIVE · READBACK OK** appear.
 
-Wijzig je een console, IP, richting, scope of mapping, dan trekt WingSync de
-live- en verhoogd-risicotoestemming in, schakelt het terug naar droogloop en
-maakt de verbindingstest ongeldig. Herhaal vanaf de relevante setupstap.
+If you change a console, IP, direction, scope, or mapping, WingSync revokes
+live and high-risk approval, switches back to dry run, and invalidates the
+connection test. Repeat from the relevant setup step.
 
-Gebruik de rode **Stop**-knop of `Ctrl+Shift+S` als noodstop. Daarmee worden
-nieuwe en nog niet verstuurde writes onmiddellijk geblokkeerd. Een WAPI-write
-die al naar de console is verstuurd, mag alleen zijn begrensde
-transactie/readback veilig afmaken voordat de sessies worden losgekoppeld.
-Neem bij direct audiorisico daarnaast de normale fysieke audio-maatregelen;
-wacht niet uitsluitend op een softwarestatus.
+Use the red **Stop** button or `Ctrl+Shift+S` as an emergency stop. This blocks
+new and not-yet-sent writes immediately. A WAPI write that has already been
+sent to the console may only finish its bounded transaction/readback safely
+before the sessions are disconnected. If there is immediate audio risk, also
+take the normal physical audio measures; do not wait for software status
+alone.
 
-## Status en storingen
+## Status and faults
 
-- **LIVE UIT · DROOGLOOP**: veilig voorbereid; er worden geen writes gedaan.
-- **DROOGLOOP · GEEN WRITES**: snapshots en previews mogen lopen.
-- **WORDT VOORBEREID · GEEN WRITES**: live is aangevraagd, maar nog niet
-  bevestigd.
-- **LIVE WORDT TOEGEPAST · WRITES + READBACK**: de bevestigde initiële diff of
-  reconnect-catch-up wordt geschreven en iedere batch wordt teruggelezen.
-- **LIVE ACTIEF · READBACK OK**: de live engine draait en uitgevoerde writes
-  worden teruggelezen.
-- **LIVE GEPAUZEERD · GEEN WRITES** of **GEBLOKKEERD · GEEN WRITES**: er is
-  geen toestemming om verder te schrijven.
+- **LIVE OFF · DRY RUN**: safely prepared; no writes are performed.
+- **DRY RUN · NO WRITES**: snapshots and previews may run.
+- **PREPARING · NO WRITES**: live has been requested, but not yet confirmed.
+- **APPLYING LIVE · WRITES + READBACK**: the confirmed initial diff or
+  reconnect catch-up is being written and each batch is read back.
+- **LIVE ACTIVE · READBACK OK**: the live engine is running and executed
+  writes are read back.
+- **LIVE PAUSED · NO WRITES** or **BLOCKED · NO WRITES**: there is no
+  permission to continue writing.
 
-De kleuren ondersteunen die tekst:
+The colors support that text:
 
-- groen: aantoonbaar actieve en geverifieerde livewerking;
-- blauw: droogloop;
-- geel/oranje: gereedmaken, reconnect of waarschuwing;
-- rood: blokkerende fout of stopactie;
-- grijs: uit/offline.
+- green: demonstrably active and verified live operation;
+- blue: dry run;
+- yellow/orange: preparation, reconnect, or warning;
+- red: blocking fault or stop action;
+- gray: off/offline.
 
-Bij verlies van één console, een gewijzigde identity, queue-overflow,
-helperfout of mislukte readback pauzeert WingSync de writes. Na reconnect
-worden identity en beide toestanden opnieuw gelezen en wordt een nieuwe diff
-gemaakt. Een foutbanner noemt de oorzaak en de herstelactie; hervat niet
-voordat de oorzaak is opgelost en de nieuwe preview is beoordeeld.
+If one console is lost, identity changes, a queue overflow occurs, the helper
+fails, or readback fails, WingSync pauses writes. After reconnect, identity
+and both states are read again and a new diff is built. An error banner gives
+the cause and recovery action; do not resume until the cause is resolved and
+the new preview has been reviewed.
 
-## Lokale cache
+## Local cache
 
-WingSync bewaart de laatst waargenomen toestand per console onder
-`%LOCALAPPDATA%\WingSync\cache`. Op de statuskaarten staan per FOH en podium
-het aantal lokale waarden, de leeftijd en of een backup werd hersteld.
+WingSync stores the last observed state per console under
+`%LOCALAPPDATA%\WingSync\cache`. The status cards show, for FOH and stage, the
+number of local values, their age, and whether a backup was restored.
 
-De cache is uitsluitend voor offline weergave en diagnose:
+The cache is only for offline display and diagnostics:
 
-- ze vervangt geen live identity- of verbindingstest;
-- ze wordt niet als bron voor een synchronisatieplan gebruikt;
-- ze wordt na reconnect nooit afgespeeld;
-- een serial-, firmware- of schema-afwijking maakt de cache stale of laat ze
-  isoleren;
-- een beschadigd bestand wordt geïsoleerd in plaats van blind geladen.
+- it does not replace a live identity or connection test;
+- it is not used as a source for a synchronization plan;
+- it is never replayed after reconnect;
+- a serial, firmware, or schema mismatch marks the cache stale or isolates it;
+- a damaged file is isolated instead of being loaded blindly.
 
-Onder **Instellingen → Cache vernieuwen** kun je de cache na het stoppen
-resetten. De vorige cache wordt in een gedateerde quarantainemap bewaard.
+Under **Settings → Rebuild cache** you can reset the cache after stopping. The
+previous cache is kept in a dated quarantine folder.
 
-## Activiteit, logs en supportpakket
+## Activity, logs, and support bundle
 
-De pagina **Activiteit** kan filteren op alles, problemen, writes en netwerk.
-**Wissen** verwijdert alleen de in-memory lijst; de lokale JSONL-logbestanden
-blijven behouden.
+The **Activity** page can filter by all, problems, writes, and network.
+**Clear** removes only the in-memory list; local JSONL log files are kept.
 
-**Supportpakket exporteren** vraagt eerst toestemming en maakt onder
-`%LOCALAPPDATA%\WingSync\support` een zip met:
+**Export support bundle** asks for permission first and creates a zip under
+`%LOCALAPPDATA%\WingSync\support` containing:
 
-- een geredigeerde configuratiestructuur;
-- geredigeerde JSONL-loggebeurtenissen;
-- productversie, coordinatorstatus en dropped-logteller.
+- a redacted configuration structure;
+- redacted JSONL log events;
+- product version, coordinator status, and dropped-log counter.
 
-IP-adressen, serienummers, lokale gebruikerspaden en WING-parameterwaarden
-worden altijd geredigeerd. Cachebestanden en consolesnapshots worden niet
-opgenomen. Controleer ook een geredigeerd pakket voordat je het extern deelt.
+IP addresses, serial numbers, local user paths, and WING parameter values are
+always redacted. Cache files and console snapshots are not included. Also
+review a redacted bundle before sharing it externally.
 
-## Sneltoetsen
+## Keyboard shortcuts
 
 - `Ctrl+1`: Status
-- `Ctrl+2`: Synchronisatie
-- `Ctrl+3`: Activiteit
-- `Ctrl+4`: Instellingen
-- `Ctrl+Shift+S`: synchronisatie onmiddellijk stoppen
+- `Ctrl+2`: Synchronization
+- `Ctrl+3`: Activity
+- `Ctrl+4`: Settings
+- `Ctrl+Shift+S`: stop synchronization immediately
 
-De editor wordt tijdens een actieve sessie vergrendeld. Stop eerst voordat je
-topologie of safetyinstellingen aanpast.
+The editor is locked during an active session. Stop first before changing
+topology or safety settings.
