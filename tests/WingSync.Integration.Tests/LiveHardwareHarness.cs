@@ -629,7 +629,7 @@ internal static class LiveHardwareHarness
                         AssertConnectedSerialAsync(
                             foh,
                             pins.FohSerial,
-                            "FOH recovery vlak voor write",
+                            "FOH recovery before write",
                             cancellationToken),
                         AssertConnectedSerialAsync(
                             stage,
