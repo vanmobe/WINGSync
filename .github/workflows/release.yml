@@ -27,6 +27,7 @@ jobs:
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
+          if-no-files-found: error
           name: WingSync-${{ github.ref_name }}
           path: |
             artifacts/WingSync-portable-win-x64-*.zip
