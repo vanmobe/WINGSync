@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/WingSync.Core/WingSync.Core.csproj" />
+    <Project Path="src/WingSync.Infrastructure/WingSync.Infrastructure.csproj" />
+    <Project Path="src/WingSync.App/WingSync.App.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/WingSync.Core.Tests/WingSync.Core.Tests.csproj" />
+    <Project Path="tests/WingSync.Integration.Tests/WingSync.Integration.Tests.csproj" />
+    <Project Path="tests/WingSync.UiTests/WingSync.UiTests.csproj" />
+  </Folder>
+</Solution>

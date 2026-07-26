@@ -1,0 +1,1107 @@
+<Window x:Class="WingSync.App.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:automation="clr-namespace:System.Windows.Automation;assembly=PresentationCore"
+        Title="WingSync"
+        Width="1240"
+        Height="800"
+        MinWidth="860"
+        MinHeight="480"
+        WindowStartupLocation="CenterScreen"
+        PreviewKeyDown="OnPreviewKeyDown"
+        automation:AutomationProperties.AutomationId="MainWindow">
+    <Window.Resources>
+        <Style x:Key="LightNavButton" TargetType="ListBoxItem">
+            <Setter Property="Foreground" Value="#333840" />
+            <Setter Property="Padding" Value="14,11" />
+            <Setter Property="Margin" Value="9,2" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListBoxItem">
+                        <Border x:Name="NavChrome"
+                                Background="Transparent"
+                                BorderBrush="Transparent"
+                                BorderThickness="1"
+                                CornerRadius="6"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="NavChrome" Property="Background" Value="#F1F1EE" />
+                                <Setter TargetName="NavChrome" Property="BorderBrush" Value="#D8D8D2" />
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="NavChrome" Property="Background" Value="#FFF2A8" />
+                                <Setter TargetName="NavChrome" Property="BorderBrush" Value="#E4C400" />
+                                <Setter Property="Foreground" Value="#171717" />
+                                <Setter Property="FontWeight" Value="SemiBold" />
+                            </Trigger>
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter TargetName="NavChrome" Property="BorderBrush" Value="#171717" />
+                                <Setter TargetName="NavChrome" Property="BorderThickness" Value="2" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="BannerLabel" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="#777872" />
+            <Setter Property="FontSize" Value="9" />
+            <Setter Property="FontWeight" Value="Bold" />
+        </Style>
+
+        <Style x:Key="WingPrimaryButton" TargetType="Button" BasedOn="{StaticResource PrimaryButton}">
+            <Setter Property="Background" Value="#E5C600" />
+            <Setter Property="Foreground" Value="#121212" />
+            <Setter Property="MinWidth" Value="112" />
+            <Setter Property="Padding" Value="15,9" />
+        </Style>
+    </Window.Resources>
+    <Grid Background="{StaticResource CanvasBrush}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="88" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="42" />
+        </Grid.RowDefinitions>
+
+        <Border Grid.Row="0"
+                Background="#FCFCFA"
+                BorderBrush="#D7D7D1"
+                BorderThickness="0,0,0,1">
+            <Grid Margin="14,8">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="68" />
+                    <ColumnDefinition Width="12" />
+                    <ColumnDefinition Width="128" />
+                    <ColumnDefinition Width="14" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="14" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="8" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <Border Width="68"
+                        Height="68"
+                        Background="#252525"
+                        BorderBrush="#111111"
+                        BorderThickness="1"
+                        CornerRadius="9"
+                        ClipToBounds="True"
+                        automation:AutomationProperties.Name="WingSync-logo">
+                    <Image Source="/WingSync;component/Assets/wingsync-logo.png"
+                           Stretch="UniformToFill"
+                           automation:AutomationProperties.AutomationId="WingSyncLogo"
+                           automation:AutomationProperties.Name="WingSync-logo, WING in wit en SYNC in geel" />
+                </Border>
+
+                <StackPanel Grid.Column="2" VerticalAlignment="Center">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="WING"
+                                   Foreground="#171717"
+                                   FontSize="19"
+                                   FontWeight="Bold" />
+                        <TextBlock Text="SYNC"
+                                   Foreground="#C8AA00"
+                                   FontSize="19"
+                                   FontWeight="Bold"
+                                   Margin="5,0,0,0" />
+                    </StackPanel>
+                    <TextBlock Text="FOH / MONITOR LINK"
+                               Foreground="#777872"
+                               FontSize="9"
+                               FontWeight="Bold"
+                               Margin="0,3,0,0" />
+                </StackPanel>
+
+                <Border Grid.Column="4"
+                        Background="#F3F3EF"
+                        BorderBrush="#DEDED8"
+                        BorderThickness="1"
+                        CornerRadius="7"
+                        Padding="12,7"
+                        VerticalAlignment="Center">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="1" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="1" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Text="CONSOLEFLOW" Style="{StaticResource BannerLabel}" />
+                            <TextBlock Text="{Binding DirectionSummaryText}"
+                                       Foreground="#252525"
+                                       FontSize="12"
+                                       FontWeight="SemiBold"
+                                       TextTrimming="CharacterEllipsis"
+                                       automation:AutomationProperties.AutomationId="DirectionSummaryText"
+                                       automation:AutomationProperties.Name="{Binding DirectionSummaryText}" />
+                        </StackPanel>
+                        <Border Grid.Column="1" Background="#D4D4CE" Margin="11,0" />
+                        <StackPanel Grid.Column="2" VerticalAlignment="Center">
+                            <TextBlock Text="SESSIESTATUS" Style="{StaticResource BannerLabel}" />
+                            <StackPanel Orientation="Horizontal">
+                                <Ellipse Width="8"
+                                         Height="8"
+                                         Fill="{Binding OverallStatusBrush}"
+                                         Margin="0,0,7,0"
+                                         VerticalAlignment="Center" />
+                                <TextBlock Text="{Binding OverallStatusText}"
+                                           automation:AutomationProperties.AutomationId="OverallStatusText"
+                                           automation:AutomationProperties.LiveSetting="Polite"
+                                           Foreground="#252525"
+                                           FontSize="12"
+                                           FontWeight="SemiBold"
+                                           TextTrimming="CharacterEllipsis" />
+                            </StackPanel>
+                        </StackPanel>
+                        <Border Grid.Column="3" Background="#D4D4CE" Margin="11,0" />
+                        <StackPanel Grid.Column="4" VerticalAlignment="Center">
+                            <TextBlock Text="MODUS" Style="{StaticResource BannerLabel}" />
+                            <Border Background="{Binding RunModeBackground}"
+                                    CornerRadius="10"
+                                    Padding="8,3"
+                                    Margin="0,1,0,0">
+                                <TextBlock Text="{Binding RunModeText}"
+                                           Foreground="{Binding RunModeForeground}"
+                                           FontSize="10"
+                                           FontWeight="Bold"
+                                           automation:AutomationProperties.AutomationId="RunModeText"
+                                           automation:AutomationProperties.Name="{Binding RunModeText}"
+                                           automation:AutomationProperties.LiveSetting="Assertive" />
+                            </Border>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <Button Grid.Column="6"
+                        Content="Stop"
+                        Command="{Binding StopCommand}"
+                        IsEnabled="{Binding IsRunning}"
+                        Style="{StaticResource DangerButton}"
+                        MinWidth="76"
+                        Padding="14,9"
+                        VerticalAlignment="Center"
+                        ToolTip="Noodstop (Ctrl+Shift+S)"
+                        automation:AutomationProperties.AutomationId="StopButton"
+                        automation:AutomationProperties.Name="Nieuwe synchronisatiewrites onmiddellijk blokkeren"
+                        automation:AutomationProperties.AcceleratorKey="Ctrl+Shift+S"
+                        automation:AutomationProperties.HelpText="Blokkeert nieuwe writes onmiddellijk; een reeds verstuurde transactie wordt veilig teruggelezen en daarna worden beide verbindingen verbroken. Sneltoets Ctrl+Shift+S." />
+                <Button Grid.Column="8"
+                        Content="{Binding StartButtonText}"
+                        Command="{Binding StartCommand}"
+                        IsEnabled="{Binding CanPrimaryAction}"
+                        Style="{StaticResource WingPrimaryButton}"
+                        VerticalAlignment="Center"
+                        automation:AutomationProperties.AutomationId="StartButton"
+                        automation:AutomationProperties.Name="{Binding StartButtonText}"
+                        automation:AutomationProperties.HelpText="{Binding StartButtonHelpText}" />
+            </Grid>
+        </Border>
+
+        <Border Grid.Row="1"
+                Width="188"
+                HorizontalAlignment="Left"
+                Background="#F8F8F5"
+                BorderBrush="#D7D7D1"
+                BorderThickness="0,0,1,0">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="50" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <TextBlock Text="WERKRUIMTE"
+                           Style="{StaticResource BannerLabel}"
+                           Margin="23,20,0,8" />
+
+                <ListBox Grid.Row="1"
+                         SelectedIndex="{Binding SelectedPageIndex, Mode=TwoWay}"
+                         Background="Transparent"
+                         BorderThickness="0"
+                         automation:AutomationProperties.AutomationId="Navigation">
+                    <ListBoxItem Style="{StaticResource LightNavButton}"
+                                 ToolTip="Status (Ctrl+1)"
+                                 automation:AutomationProperties.AutomationId="NavigationStatus"
+                                 automation:AutomationProperties.Name="Status"
+                                 automation:AutomationProperties.AcceleratorKey="Ctrl+1"
+                                 automation:AutomationProperties.HelpText="Open het live overzicht. Sneltoets Ctrl+1.">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#x25CF;" Foreground="#A58C00" Margin="0,0,11,0" />
+                            <TextBlock Text="Status" />
+                        </StackPanel>
+                    </ListBoxItem>
+                    <ListBoxItem Style="{StaticResource LightNavButton}"
+                                 ToolTip="Synchronisatie (Ctrl+2)"
+                                 automation:AutomationProperties.AutomationId="NavigationSync"
+                                 automation:AutomationProperties.Name="Synchronisatie"
+                                 automation:AutomationProperties.AcceleratorKey="Ctrl+2"
+                                 automation:AutomationProperties.HelpText="Stel consoles, scopes en kanaalmapping in. Sneltoets Ctrl+2.">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#x2194;" Foreground="#A58C00" FontSize="18" Margin="0,-2,10,0" />
+                            <TextBlock Text="Synchronisatie" />
+                        </StackPanel>
+                    </ListBoxItem>
+                    <ListBoxItem Style="{StaticResource LightNavButton}"
+                                 ToolTip="Activiteit (Ctrl+3)"
+                                 automation:AutomationProperties.AutomationId="NavigationActivity"
+                                 automation:AutomationProperties.Name="Activiteit"
+                                 automation:AutomationProperties.AcceleratorKey="Ctrl+3"
+                                 automation:AutomationProperties.HelpText="Bekijk writes, reconnects en problemen. Sneltoets Ctrl+3.">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#x2261;" Foreground="#A58C00" FontSize="19" Margin="0,-3,11,0" />
+                            <TextBlock Text="Activiteit" />
+                        </StackPanel>
+                    </ListBoxItem>
+                    <ListBoxItem Style="{StaticResource LightNavButton}"
+                                 ToolTip="Instellingen (Ctrl+4)"
+                                 automation:AutomationProperties.AutomationId="NavigationSettings"
+                                 automation:AutomationProperties.Name="Instellingen"
+                                 automation:AutomationProperties.AcceleratorKey="Ctrl+4"
+                                 automation:AutomationProperties.HelpText="Open herstel, cache en productinformatie. Sneltoets Ctrl+4.">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#x2699;" Foreground="#A58C00" FontSize="16" Margin="0,-1,10,0" />
+                            <TextBlock Text="Instellingen" />
+                        </StackPanel>
+                    </ListBoxItem>
+                </ListBox>
+
+                <Border Grid.Row="2"
+                        Margin="10,10,10,14"
+                        Padding="11"
+                        Background="#EFEFEA"
+                        BorderBrush="#D7D7D1"
+                        BorderThickness="1"
+                        CornerRadius="6">
+                    <StackPanel>
+                        <TextBlock Text="LIVE-AUDIO VEILIGHEID"
+                                   Style="{StaticResource BannerLabel}" />
+                        <TextBlock Text="Droogloop en readback eerst"
+                                   Foreground="#393A36"
+                                   FontSize="11"
+                                   FontWeight="SemiBold"
+                                   Margin="0,3,0,0"
+                                   TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding VersionText}"
+                                   Foreground="#777872"
+                                   FontSize="10"
+                                   Margin="0,5,0,0" />
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </Border>
+
+        <Grid Grid.Row="1" Margin="188,0,0,0">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="58" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <Border Background="White"
+                    BorderBrush="{StaticResource LineBrush}"
+                    BorderThickness="0,0,0,1">
+                <StackPanel Margin="28,0" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding HeaderTitle}"
+                               automation:AutomationProperties.AutomationId="HeaderTitleText"
+                               FontWeight="SemiBold"
+                               FontSize="17" />
+                    <TextBlock Text="{Binding HeaderSubtitle}"
+                               Foreground="{StaticResource MutedInkBrush}"
+                               FontSize="11" />
+                </StackPanel>
+            </Border>
+
+            <TabControl Grid.Row="1"
+                        SelectedIndex="{Binding SelectedPageIndex, Mode=TwoWay}"
+                        Background="{StaticResource CanvasBrush}"
+                        BorderThickness="0">
+                <TabControl.Resources>
+                    <Style TargetType="TabItem">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                    </Style>
+                </TabControl.Resources>
+
+                <TabItem>
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <StackPanel Margin="30,27,30,36" MaxWidth="1150">
+                            <TextBlock Text="Systeemstatus" Style="{StaticResource PageTitle}" />
+                            <TextBlock Text="Live overzicht van beide consoles, de cache en de synchronisatiestroom."
+                                       Foreground="{StaticResource MutedInkBrush}"
+                                       Margin="0,0,0,22" />
+
+                            <Border Style="{StaticResource Card}"
+                                    Background="#FFF3E2"
+                                    BorderBrush="#F0C67F"
+                                    Margin="0,0,0,18"
+                                    Visibility="{Binding HasBlockingProblems, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                    automation:AutomationProperties.AutomationId="ProblemBanner">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <Border Width="31" Height="31" CornerRadius="16" Background="#D57A00">
+                                        <TextBlock Text="!" Foreground="White" FontWeight="Bold"
+                                                   HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                    </Border>
+                                    <StackPanel Grid.Column="1" Margin="12,0">
+                                        <TextBlock Text="{Binding PrimaryProblemTitle}" FontWeight="SemiBold" />
+                                        <TextBlock Text="{Binding PrimaryProblemDetail}"
+                                                   automation:AutomationProperties.LiveSetting="Assertive"
+                                                   Foreground="#76531F"
+                                                   TextWrapping="Wrap" />
+                                    </StackPanel>
+                                    <Button Grid.Column="2"
+                                            Content="Bekijk"
+                                            Command="{Binding ShowProblemsCommand}"
+                                            Style="{StaticResource SecondaryButton}" />
+                                </Grid>
+                            </Border>
+
+                            <Border Style="{StaticResource Card}"
+                                    Background="#F8F9FA"
+                                    BorderBrush="#DCE1E8"
+                                    Margin="0,0,0,18"
+                                    automation:AutomationProperties.AutomationId="SetupChecklist">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <Border Width="34"
+                                            Height="34"
+                                            CornerRadius="17"
+                                            Background="{Binding SetupProgressBackground}"
+                                            VerticalAlignment="Top">
+                                        <TextBlock Text="{Binding SetupProgressIndicatorText}"
+                                                   Foreground="{Binding SetupProgressForeground}"
+                                                   FontWeight="Bold"
+                                                   FontSize="17"
+                                                   HorizontalAlignment="Center"
+                                                   VerticalAlignment="Center"
+                                                   automation:AutomationProperties.AutomationId="SetupProgressIndicator"
+                                                   automation:AutomationProperties.Name="{Binding SetupProgressAccessibleText}" />
+                                    </Border>
+                                    <StackPanel Grid.Column="1" Margin="12,0,0,0">
+                                        <TextBlock Text="{Binding SetupProgressText}"
+                                                   FontWeight="SemiBold"
+                                                   automation:AutomationProperties.AutomationId="SetupProgressText" />
+                                        <TextBlock Text="{Binding NextStepText}"
+                                                   Foreground="{StaticResource MutedInkBrush}"
+                                                   TextWrapping="Wrap"
+                                                   Margin="0,4,0,0"
+                                                   automation:AutomationProperties.AutomationId="NextStepText" />
+                                    </StackPanel>
+                                    <Button Grid.Column="2"
+                                            Content="Setup openen"
+                                            Command="{Binding OpenSetupCommand}"
+                                            Style="{StaticResource SecondaryButton}"
+                                            Margin="14,0,0,0"
+                                            VerticalAlignment="Center"
+                                            automation:AutomationProperties.AutomationId="OpenSetupButton"
+                                            automation:AutomationProperties.Name="Setup openen"
+                                            automation:AutomationProperties.HelpText="Opent de consolekeuze, verbindingstest, scopes en kanaalmapping." />
+                                </Grid>
+                            </Border>
+
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="120" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+
+                                <Border Grid.Column="0" Style="{StaticResource Card}">
+                                    <StackPanel>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel>
+                                                <TextBlock Text="{Binding FohRoleCaption}"
+                                                           Foreground="{StaticResource MutedInkBrush}"
+                                                           FontSize="11"
+                                                           FontWeight="Bold" />
+                                                <TextBlock Text="{Binding FohName}"
+                                                           FontSize="20"
+                                                           FontWeight="SemiBold"
+                                                           Margin="0,4,0,0" />
+                                            </StackPanel>
+                                            <Border Grid.Column="1"
+                                                    Background="{Binding FohStatusBackground}"
+                                                    CornerRadius="12"
+                                                    Padding="9,4"
+                                                    VerticalAlignment="Top">
+                                                    <TextBlock Text="{Binding FohStatusText}"
+                                                               automation:AutomationProperties.AutomationId="FohStatusText"
+                                                           Foreground="{Binding FohStatusForeground}"
+                                                           FontSize="11"
+                                                           FontWeight="Bold" />
+                                            </Border>
+                                        </Grid>
+                                        <Separator Margin="0,16,0,13" Background="{StaticResource LineBrush}" />
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="90" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                            </Grid.RowDefinitions>
+                                            <TextBlock Text="IP-adres" Foreground="{StaticResource MutedInkBrush}" />
+                                            <TextBlock Grid.Column="1" Text="{Binding FohIp}" FontFamily="Consolas" />
+                                            <TextBlock Grid.Row="1" Text="Model" Foreground="{StaticResource MutedInkBrush}" Margin="0,7,0,0" />
+                                            <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding FohModel}" Margin="0,7,0,0" />
+                                            <TextBlock Grid.Row="2" Text="Firmware" Foreground="{StaticResource MutedInkBrush}" Margin="0,7,0,0" />
+                                            <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding FohFirmware}" Margin="0,7,0,0" />
+                                            <TextBlock Grid.Row="3" Text="Laatste data" Foreground="{StaticResource MutedInkBrush}" Margin="0,7,0,0" />
+                                            <TextBlock Grid.Row="3"
+                                                       Grid.Column="1"
+                                                       Text="{Binding FohLastSeen}"
+                                                       Margin="0,7,0,0"
+                                                       automation:AutomationProperties.AutomationId="FohLastDataText" />
+                                            <TextBlock Grid.Row="4" Text="Serienummer" Foreground="{StaticResource MutedInkBrush}" Margin="0,7,0,0" />
+                                            <TextBlock Grid.Row="4"
+                                                       Grid.Column="1"
+                                                       Text="{Binding FohSerial}"
+                                                       FontFamily="Consolas"
+                                                       Margin="0,7,0,0"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       ToolTip="{Binding FohSerial}"
+                                                       automation:AutomationProperties.AutomationId="FohSerialText" />
+                                            <TextBlock Grid.Row="5" Text="Identiteit" Foreground="{StaticResource MutedInkBrush}" Margin="0,7,0,0" />
+                                            <TextBlock Grid.Row="5"
+                                                       Grid.Column="1"
+                                                       Text="{Binding FohIdentityText}"
+                                                       Margin="0,7,0,0"
+                                                       TextWrapping="Wrap"
+                                                       automation:AutomationProperties.AutomationId="FohIdentityText" />
+                                            <TextBlock Grid.Row="6" Text="Lokale cache" Foreground="{StaticResource MutedInkBrush}" Margin="0,7,0,0" />
+                                            <TextBlock Grid.Row="6"
+                                                       Grid.Column="1"
+                                                       Text="{Binding FohCacheSummary}"
+                                                       Margin="0,7,0,0"
+                                                       TextWrapping="Wrap"
+                                                       automation:AutomationProperties.AutomationId="FohCacheSummaryText" />
+                                        </Grid>
+                                    </StackPanel>
+                                </Border>
+
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Center">
+                                    <TextBlock Text="{Binding FlowArrowText}"
+                                               FontFamily="Consolas"
+                                               FontSize="24"
+                                               Foreground="{Binding FlowBrush}"
+                                               HorizontalAlignment="Center" />
+                                    <TextBlock Text="{Binding FlowStatusText}"
+                                               automation:AutomationProperties.AutomationId="FlowStatusText"
+                                               FontSize="11"
+                                               FontWeight="SemiBold"
+                                               Foreground="{Binding FlowBrush}"
+                                               TextAlignment="Center"
+                                               Margin="0,6,0,0" />
+                                </StackPanel>
+
+                                <Border Grid.Column="2" Style="{StaticResource Card}">
+                                    <StackPanel>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel>
+                                                <TextBlock Text="{Binding StageRoleCaption}"
+                                                           Foreground="{StaticResource MutedInkBrush}"
+                                                           FontSize="11"
+                                                           FontWeight="Bold" />
+                                                <TextBlock Text="{Binding StageName}"
+                                                           FontSize="20"
+                                                           FontWeight="SemiBold"
+                                                           Margin="0,4,0,0" />
+                                            </StackPanel>
+                                            <Border Grid.Column="1"
+                                                    Background="{Binding StageStatusBackground}"
+                                                    CornerRadius="12"
+                                                    Padding="9,4"
+                                                    VerticalAlignment="Top">
+                                                    <TextBlock Text="{Binding StageStatusText}"
+                                                               automation:AutomationProperties.AutomationId="StageStatusText"
+                                                           Foreground="{Binding StageStatusForeground}"
+                                                           FontSize="11"
+                                                           FontWeight="Bold" />
+                                            </Border>
+                                        </Grid>
+                                        <Separator Margin="0,16,0,13" Background="{StaticResource LineBrush}" />
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="90" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                            </Grid.RowDefinitions>
+                                            <TextBlock Text="IP-adres" Foreground="{StaticResource MutedInkBrush}" />
+                                            <TextBlock Grid.Column="1" Text="{Binding StageIp}" FontFamily="Consolas" />
+                                            <TextBlock Grid.Row="1" Text="Model" Foreground="{StaticResource MutedInkBrush}" Margin="0,7,0,0" />
+                                            <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding StageModel}" Margin="0,7,0,0" />
+                                            <TextBlock Grid.Row="2" Text="Firmware" Foreground="{StaticResource MutedInkBrush}" Margin="0,7,0,0" />
+                                            <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding StageFirmware}" Margin="0,7,0,0" />
+                                            <TextBlock Grid.Row="3" Text="Laatste data" Foreground="{StaticResource MutedInkBrush}" Margin="0,7,0,0" />
+                                            <TextBlock Grid.Row="3"
+                                                       Grid.Column="1"
+                                                       Text="{Binding StageLastSeen}"
+                                                       Margin="0,7,0,0"
+                                                       automation:AutomationProperties.AutomationId="StageLastDataText" />
+                                            <TextBlock Grid.Row="4" Text="Serienummer" Foreground="{StaticResource MutedInkBrush}" Margin="0,7,0,0" />
+                                            <TextBlock Grid.Row="4"
+                                                       Grid.Column="1"
+                                                       Text="{Binding StageSerial}"
+                                                       FontFamily="Consolas"
+                                                       Margin="0,7,0,0"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       ToolTip="{Binding StageSerial}"
+                                                       automation:AutomationProperties.AutomationId="StageSerialText" />
+                                            <TextBlock Grid.Row="5" Text="Identiteit" Foreground="{StaticResource MutedInkBrush}" Margin="0,7,0,0" />
+                                            <TextBlock Grid.Row="5"
+                                                       Grid.Column="1"
+                                                       Text="{Binding StageIdentityText}"
+                                                       Margin="0,7,0,0"
+                                                       TextWrapping="Wrap"
+                                                       automation:AutomationProperties.AutomationId="StageIdentityText" />
+                                            <TextBlock Grid.Row="6" Text="Lokale cache" Foreground="{StaticResource MutedInkBrush}" Margin="0,7,0,0" />
+                                            <TextBlock Grid.Row="6"
+                                                       Grid.Column="1"
+                                                       Text="{Binding StageCacheSummary}"
+                                                       Margin="0,7,0,0"
+                                                       TextWrapping="Wrap"
+                                                       automation:AutomationProperties.AutomationId="StageCacheSummaryText" />
+                                        </Grid>
+                                    </StackPanel>
+                                </Border>
+                            </Grid>
+
+                            <UniformGrid Columns="3" Margin="0,18,0,0">
+                                <Border Style="{StaticResource Card}" Margin="0,0,6,6" Padding="16">
+                                    <StackPanel>
+                                        <TextBlock Text="Geverifieerde live writes" Foreground="{StaticResource MutedInkBrush}" FontSize="12" />
+                                        <TextBlock Text="{Binding SyncedCount}"
+                                                   FontSize="24"
+                                                   FontWeight="SemiBold"
+                                                   Margin="0,4,0,0"
+                                                   automation:AutomationProperties.AutomationId="VerifiedWritesText" />
+                                        <TextBlock Text="geschreven én teruggelezen" Foreground="{StaticResource MutedInkBrush}" FontSize="11" />
+                                    </StackPanel>
+                                </Border>
+                                <Border Style="{StaticResource Card}" Margin="3,0,3,6" Padding="16">
+                                    <StackPanel>
+                                        <TextBlock Text="Preview / gepland" Foreground="{StaticResource MutedInkBrush}" FontSize="12" />
+                                        <TextBlock Text="{Binding PreviewedCount}"
+                                                   FontSize="24"
+                                                   FontWeight="SemiBold"
+                                                   Margin="0,4,0,0"
+                                                   automation:AutomationProperties.AutomationId="PreviewedWritesText" />
+                                        <TextBlock Text="geen consolewrite" Foreground="{StaticResource MutedInkBrush}" FontSize="11" />
+                                    </StackPanel>
+                                </Border>
+                                <Border Style="{StaticResource Card}" Margin="6,0,0,6" Padding="16">
+                                    <StackPanel>
+                                        <TextBlock Text="Door safety geblokkeerd" Foreground="{StaticResource MutedInkBrush}" FontSize="12" />
+                                        <TextBlock Text="{Binding BlockedCount}"
+                                                   FontSize="24"
+                                                   FontWeight="SemiBold"
+                                                   Margin="0,4,0,0"
+                                                   automation:AutomationProperties.AutomationId="BlockedWritesText" />
+                                        <TextBlock Text="niet uitgevoerd" Foreground="{StaticResource MutedInkBrush}" FontSize="11" />
+                                    </StackPanel>
+                                </Border>
+                                <Border Style="{StaticResource Card}" Margin="0,3,6,0" Padding="16">
+                                    <StackPanel>
+                                        <TextBlock Text="Wachtrij" Foreground="{StaticResource MutedInkBrush}" FontSize="12" />
+                                        <TextBlock Text="{Binding QueueDepth}" FontSize="24" FontWeight="SemiBold" Margin="0,4,0,0" />
+                                        <TextBlock Text="wijzigingen" Foreground="{StaticResource MutedInkBrush}" FontSize="11" />
+                                    </StackPanel>
+                                </Border>
+                                <Border Style="{StaticResource Card}" Margin="3,3,3,0" Padding="16">
+                                    <StackPanel>
+                                        <TextBlock Text="Vertraging p95" Foreground="{StaticResource MutedInkBrush}" FontSize="12" />
+                                        <TextBlock Text="{Binding P95Latency}" FontSize="24" FontWeight="SemiBold" Margin="0,4,0,0" />
+                                        <TextBlock Text="recente geverifieerde writes" Foreground="{StaticResource MutedInkBrush}" FontSize="11" />
+                                    </StackPanel>
+                                </Border>
+                                <Border Style="{StaticResource Card}" Margin="6,3,0,0" Padding="16">
+                                    <StackPanel>
+                                        <TextBlock Text="Lokale cache" Foreground="{StaticResource MutedInkBrush}" FontSize="12" />
+                                        <TextBlock Text="{Binding CacheStatus}" FontSize="18" FontWeight="SemiBold" Margin="0,8,0,2" />
+                                        <TextBlock Text="{Binding CacheAge}" Foreground="{StaticResource MutedInkBrush}" FontSize="11" TextWrapping="Wrap" />
+                                    </StackPanel>
+                                </Border>
+                            </UniformGrid>
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
+
+                <TabItem>
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <StackPanel Margin="30,27,30,40"
+                                    MaxWidth="1150"
+                                    IsEnabled="{Binding IsEditorEnabled}">
+                            <TextBlock Text="Synchronisatie" Style="{StaticResource PageTitle}" />
+                            <TextBlock Text="Kies de consoles, WING-scopes en de kanaalmapping. Tijdens een actieve sessie is deze configuratie vergrendeld."
+                                       Foreground="{StaticResource MutedInkBrush}"
+                                       Margin="0,0,0,22" />
+
+                            <Border Style="{StaticResource Card}" Margin="0,0,0,16">
+                                <StackPanel>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="16" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel>
+                                            <TextBlock Text="{Binding FohEditorCaption}" Style="{StaticResource SectionTitle}" />
+                                            <TextBlock Text="Ontdekte console" Foreground="{StaticResource MutedInkBrush}" FontSize="12" />
+                                            <ComboBox ItemsSource="{Binding DiscoveredWings}"
+                                                      SelectedItem="{Binding SelectedFohWing}"
+                                                      Margin="0,4,0,10"
+                                                      automation:AutomationProperties.AutomationId="FohConsoleCombo"
+                                                      automation:AutomationProperties.Name="{Binding SelectedFohWing.DisplayName}">
+                                                <ComboBox.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <TextBlock Text="{Binding DisplayName}"
+                                                                   automation:AutomationProperties.Name="{Binding DisplayName}" />
+                                                    </DataTemplate>
+                                                </ComboBox.ItemTemplate>
+                                            </ComboBox>
+                                            <TextBlock Text="IP-adres" Foreground="{StaticResource MutedInkBrush}" FontSize="12" />
+                                            <TextBox Text="{Binding EditableFohIp, UpdateSourceTrigger=PropertyChanged}"
+                                                     Margin="0,4,0,0"
+                                                     automation:AutomationProperties.AutomationId="FohIpTextBox"
+                                                     automation:AutomationProperties.Name="FOH IP-adres" />
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="2">
+                                            <TextBlock Text="{Binding StageEditorCaption}" Style="{StaticResource SectionTitle}" />
+                                            <TextBlock Text="Ontdekte console" Foreground="{StaticResource MutedInkBrush}" FontSize="12" />
+                                            <ComboBox ItemsSource="{Binding DiscoveredWings}"
+                                                      SelectedItem="{Binding SelectedStageWing}"
+                                                      Margin="0,4,0,10"
+                                                      automation:AutomationProperties.AutomationId="StageConsoleCombo"
+                                                      automation:AutomationProperties.Name="{Binding SelectedStageWing.DisplayName}">
+                                                <ComboBox.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <TextBlock Text="{Binding DisplayName}"
+                                                                   automation:AutomationProperties.Name="{Binding DisplayName}" />
+                                                    </DataTemplate>
+                                                </ComboBox.ItemTemplate>
+                                            </ComboBox>
+                                            <TextBlock Text="IP-adres" Foreground="{StaticResource MutedInkBrush}" FontSize="12" />
+                                            <TextBox Text="{Binding EditableStageIp, UpdateSourceTrigger=PropertyChanged}"
+                                                     Margin="0,4,0,0"
+                                                     automation:AutomationProperties.AutomationId="StageIpTextBox"
+                                                     automation:AutomationProperties.Name="Podium IP-adres" />
+                                        </StackPanel>
+                                    </Grid>
+                                    <StackPanel Orientation="Horizontal" Margin="0,16,0,0">
+                                        <Button Content="Consoles zoeken"
+                                                Command="{Binding DiscoverCommand}"
+                                                Style="{StaticResource SecondaryButton}"
+                                                automation:AutomationProperties.AutomationId="DiscoverButton" />
+                                        <Button Content="Verbinding testen"
+                                                Command="{Binding TestConnectionsCommand}"
+                                                Style="{StaticResource SecondaryButton}"
+                                                Margin="8,0,0,0"
+                                                automation:AutomationProperties.AutomationId="TestConnectionsButton" />
+                                        <TextBlock Text="{Binding DiscoveryStatus}"
+                                                   automation:AutomationProperties.AutomationId="DiscoveryStatusText"
+                                                   automation:AutomationProperties.LiveSetting="Polite"
+                                                   Foreground="{StaticResource MutedInkBrush}"
+                                                   VerticalAlignment="Center"
+                                                   Margin="12,0,0,0" />
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
+
+                            <Grid Margin="0,0,0,16">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="2*" />
+                                    <ColumnDefinition Width="16" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Border Style="{StaticResource Card}">
+                                    <StackPanel>
+                                        <TextBlock Text="WING Library Scopes" Style="{StaticResource SectionTitle}" />
+                                        <TextBlock Text="Alleen aangevinkte secties worden gevolgd. Risicovolle scopes staan standaard uit."
+                                                   Foreground="{StaticResource MutedInkBrush}"
+                                                   TextWrapping="Wrap"
+                                                   Margin="0,0,0,12" />
+                                        <ItemsControl ItemsSource="{Binding ScopeSelections}"
+                                                      automation:AutomationProperties.AutomationId="ScopeList">
+                                            <ItemsControl.ItemsPanel>
+                                                <ItemsPanelTemplate>
+                                                    <UniformGrid Columns="3" />
+                                                </ItemsPanelTemplate>
+                                            </ItemsControl.ItemsPanel>
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                     <CheckBox IsChecked="{Binding IsSelected}"
+                                                               IsEnabled="{Binding IsSupported}"
+                                                               ToolTip="{Binding Description}"
+                                                               automation:AutomationProperties.AutomationId="{Binding AutomationId}"
+                                                               automation:AutomationProperties.Name="{Binding DisplayName}"
+                                                               automation:AutomationProperties.HelpText="{Binding Description}"
+                                                               Margin="0,6,12,6">
+                                                        <StackPanel>
+                                                            <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold" />
+                                                            <TextBlock Text="{Binding RiskLabel}"
+                                                                       Foreground="{Binding RiskBrush}"
+                                                                       FontSize="10" />
+                                                        </StackPanel>
+                                                    </CheckBox>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </StackPanel>
+                                </Border>
+                                <Border Grid.Column="2" Style="{StaticResource Card}">
+                                    <StackPanel>
+                                        <TextBlock Text="Richting en veiligheid" Style="{StaticResource SectionTitle}" />
+                                        <TextBlock Text="Synchronisatierichting" Foreground="{StaticResource MutedInkBrush}" FontSize="12" />
+                                        <ComboBox ItemsSource="{Binding DirectionOptions}"
+                                                  SelectedItem="{Binding SelectedDirection}"
+                                                  Margin="0,4,0,15"
+                                                  automation:AutomationProperties.AutomationId="DirectionCombo"
+                                                  automation:AutomationProperties.Name="Synchronisatierichting" />
+                                        <CheckBox IsChecked="{Binding IsDryRun}"
+                                                  IsEnabled="{Binding CanSelectLiveMode}"
+                                                  automation:AutomationProperties.AutomationId="DryRunCheckBox"
+                                                  automation:AutomationProperties.Name="Droogloop, geen writes">
+                                            <StackPanel>
+                                                <TextBlock Text="Droogloop (geen writes)" FontWeight="SemiBold" />
+                                                <TextBlock Text="Toont exact wat WingSync zou wijzigen."
+                                                           Foreground="{StaticResource MutedInkBrush}"
+                                                           FontSize="11" />
+                                            </StackPanel>
+                                        </CheckBox>
+                                        <CheckBox IsChecked="{Binding VerifyEveryWrite}"
+                                                  IsEnabled="False"
+                                                  Margin="0,10,0,0"
+                                                  automation:AutomationProperties.AutomationId="VerifyReadbackCheckBox"
+                                                  automation:AutomationProperties.Name="Iedere write verplicht teruglezen">
+                                            <StackPanel>
+                                                <TextBlock Text="Iedere write teruglezen" FontWeight="SemiBold" />
+                                                <TextBlock Text="Altijd actief; dit kan niet worden uitgeschakeld."
+                                                           Foreground="{StaticResource MutedInkBrush}"
+                                                           FontSize="11" />
+                                            </StackPanel>
+                                        </CheckBox>
+                                        <CheckBox IsChecked="{Binding AllowHighRiskWrites}"
+                                                  IsEnabled="{Binding CanArmHighRisk}"
+                                                  Margin="0,10,0,0"
+                                                  automation:AutomationProperties.AutomationId="AllowHighRiskWritesCheckBox"
+                                                  automation:AutomationProperties.Name="Scopes met verhoogd risico toestaan">
+                                            <StackPanel>
+                                                <TextBlock Text="Scopes met verhoogd risico toestaan"
+                                                           FontWeight="SemiBold" />
+                                                <TextBlock Text="Pas na verbindingstest en droogloop; ontgrendelt routing, BUS, MAIN, FADER en MUTE met extra bevestiging."
+                                                           TextWrapping="Wrap"
+                                                           Foreground="{StaticResource MutedInkBrush}"
+                                                           FontSize="11" />
+                                            </StackPanel>
+                                        </CheckBox>
+                                        <Border Background="#EAF4FC" CornerRadius="6" Padding="10" Margin="0,16,0,0">
+                                            <TextBlock Text="{Binding SafetySummary}"
+                                                       TextWrapping="Wrap"
+                                                       Foreground="#235F8B"
+                                                       FontSize="12" />
+                                        </Border>
+                                        <TextBlock Text="{Binding ConfigurationSafetyNotice}"
+                                                   Foreground="#76531F"
+                                                   TextWrapping="Wrap"
+                                                   FontSize="11"
+                                                   Margin="0,10,0,0"
+                                                   automation:AutomationProperties.AutomationId="ConfigurationSafetyNoticeText"
+                                                   automation:AutomationProperties.LiveSetting="Polite" />
+                                    </StackPanel>
+                                </Border>
+                            </Grid>
+
+                            <Border Style="{StaticResource Card}">
+                                <StackPanel>
+                                    <Grid Margin="0,0,0,12">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel>
+                                            <TextBlock Text="Kanaalmapping" Style="{StaticResource SectionTitle}" Margin="0" />
+                                            <TextBlock Text="Inputkanalen 1–40 en AUX-kanalen 1–8 worden als aparte reeksen gemapt."
+                                                       Foreground="{StaticResource MutedInkBrush}"
+                                                       FontSize="12"
+                                                       Margin="0,4,0,0" />
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                            <Button Content="1 → 1 invullen"
+                                                    Command="{Binding AutoMapCommand}"
+                                                    Style="{StaticResource SecondaryButton}"
+                                                    automation:AutomationProperties.AutomationId="AutoMapButton" />
+                                            <Button Content="Rij toevoegen"
+                                                    Command="{Binding AddMappingCommand}"
+                                                    Style="{StaticResource SecondaryButton}"
+                                                    Margin="8,0,0,0"
+                                                    automation:AutomationProperties.AutomationId="AddMappingButton" />
+                                            <Button Content="AUX toevoegen"
+                                                    Command="{Binding AddAuxMappingCommand}"
+                                                    Style="{StaticResource SecondaryButton}"
+                                                    Margin="8,0,0,0"
+                                                    automation:AutomationProperties.AutomationId="AddAuxMappingButton" />
+                                            <Button Content="Selectie verwijderen"
+                                                    Command="{Binding RemoveMappingsCommand}"
+                                                    Style="{StaticResource SecondaryButton}"
+                                                    Margin="8,0,0,0"
+                                                    automation:AutomationProperties.AutomationId="RemoveMappingButton" />
+                                        </StackPanel>
+                                    </Grid>
+                                    <DataGrid ItemsSource="{Binding ChannelMappings}"
+                                              SelectedItem="{Binding SelectedMapping}"
+                                              SelectionMode="Single"
+                                              MinHeight="240"
+                                              MaxHeight="370"
+                                              automation:AutomationProperties.AutomationId="MappingGrid">
+                                        <DataGrid.Columns>
+                                            <DataGridCheckBoxColumn Header="Actief" Binding="{Binding IsEnabled}" Width="75" />
+                                            <DataGridCheckBoxColumn Header="AUX" Binding="{Binding IsAux}" Width="60" />
+                                            <DataGridTextColumn Header="Bronkanaal" Binding="{Binding SourceChannelText, UpdateSourceTrigger=PropertyChanged}" Width="*" />
+                                            <DataGridTextColumn Header="Doelkanaal" Binding="{Binding TargetChannelText, UpdateSourceTrigger=PropertyChanged}" Width="*" />
+                                            <DataGridTextColumn Header="Kanaal" Binding="{Binding Label}" IsReadOnly="True" Width="2*" />
+                                            <DataGridTextColumn Header="Validatie" Binding="{Binding ValidationText}" IsReadOnly="True" Width="2*" />
+                                        </DataGrid.Columns>
+                                    </DataGrid>
+                                    <Grid Margin="0,14,0,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="{Binding ValidationSummary}"
+                                                   automation:AutomationProperties.AutomationId="ValidationSummaryText"
+                                                   automation:AutomationProperties.LiveSetting="Polite"
+                                                   Foreground="{Binding ValidationBrush}"
+                                                   VerticalAlignment="Center"
+                                                   TextWrapping="Wrap" />
+                                        <Button Grid.Column="1"
+                                                Content="Configuratie opslaan"
+                                                Command="{Binding SaveConfigurationCommand}"
+                                                Style="{StaticResource PrimaryButton}"
+                                                automation:AutomationProperties.AutomationId="SaveConfigurationButton" />
+                                    </Grid>
+                                    <TextBlock Text="{Binding ValidationDetails}"
+                                               Foreground="{StaticResource MutedInkBrush}"
+                                               FontSize="11"
+                                               TextWrapping="Wrap"
+                                               Margin="0,8,0,0"
+                                               automation:AutomationProperties.AutomationId="ValidationDetailsText" />
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
+
+                <TabItem>
+                    <Grid Margin="30,27,30,32" MaxWidth="1150">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+                        <TextBlock Text="Activiteit en problemen" Style="{StaticResource PageTitle}" />
+                        <Grid Grid.Row="1" Margin="0,8,0,14">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Iedere write, reconnect en validatiefout wordt lokaal gelogd."
+                                       Foreground="{StaticResource MutedInkBrush}"
+                                       VerticalAlignment="Center" />
+                             <ComboBox Grid.Column="1"
+                                       ItemsSource="{Binding ActivityFilters}"
+                                       SelectedItem="{Binding SelectedActivityFilter}"
+                                       Width="145"
+                                       Margin="0,0,8,0"
+                                       automation:AutomationProperties.AutomationId="ActivityFilterCombo" />
+                            <Button Grid.Column="2"
+                                    Content="Log wissen"
+                                     Command="{Binding ClearActivityCommand}"
+                                     Style="{StaticResource SecondaryButton}"
+                                     Margin="0,0,8,0"
+                                     automation:AutomationProperties.AutomationId="ClearActivityButton" />
+                            <Button Grid.Column="3"
+                                    Content="Supportpakket exporteren"
+                                    Command="{Binding ExportSupportBundleCommand}"
+                                    Style="{StaticResource PrimaryButton}"
+                                    automation:AutomationProperties.AutomationId="ExportSupportButton" />
+                        </Grid>
+                        <Border Grid.Row="2" Style="{StaticResource Card}" Padding="0">
+                            <ListView ItemsSource="{Binding FilteredActivity}"
+                                      BorderThickness="0"
+                                      automation:AutomationProperties.AutomationId="ActivityList">
+                                <ListView.View>
+                                    <GridView>
+                                        <GridViewColumn Header="Tijd" DisplayMemberBinding="{Binding TimeText}" Width="90" />
+                                        <GridViewColumn Header="Niveau" DisplayMemberBinding="{Binding Level}" Width="90" />
+                                        <GridViewColumn Header="Bron" DisplayMemberBinding="{Binding Source}" Width="115" />
+                                        <GridViewColumn Header="Gebeurtenis" DisplayMemberBinding="{Binding Message}" Width="500" />
+                                        <GridViewColumn Header="Details" DisplayMemberBinding="{Binding Details}" Width="300" />
+                                    </GridView>
+                                </ListView.View>
+                            </ListView>
+                        </Border>
+                    </Grid>
+                </TabItem>
+
+                <TabItem>
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <StackPanel Margin="30,27,30,40" MaxWidth="900">
+                            <TextBlock Text="Instellingen" Style="{StaticResource PageTitle}" />
+                            <TextBlock Text="Gedrag bij opstarten, netwerkuitval en lokale opslag."
+                                       Foreground="{StaticResource MutedInkBrush}"
+                                       Margin="0,0,0,22" />
+
+                            <Border Style="{StaticResource Card}" Margin="0,0,0,16">
+                                <StackPanel>
+                                    <TextBlock Text="Herstel en netwerk" Style="{StaticResource SectionTitle}" />
+                                    <TextBlock Text="Automatisch opnieuw verbinden"
+                                               FontWeight="SemiBold" />
+                                    <TextBlock Text="Ingeschakeld. Writes blijven gepauzeerd totdat beide console-identiteiten opnieuw zijn bevestigd en beide toestanden vers zijn ingelezen."
+                                               TextWrapping="Wrap"
+                                               Foreground="{StaticResource MutedInkBrush}"
+                                               Margin="0,4,0,12" />
+                                    <TextBlock Text="Herstelvertraging: exponentieel, maximaal 10 seconden." />
+                                    <TextBlock Text="Event-coalescing: 25 ms voor snelle draaiknopbewegingen."
+                                               Margin="0,5,0,0" />
+                                </StackPanel>
+                            </Border>
+
+                            <Border Style="{StaticResource Card}" Margin="0,0,0,16">
+                                <StackPanel>
+                                    <TextBlock Text="Lokale cache en logs" Style="{StaticResource SectionTitle}" />
+                                    <TextBlock Text="Opslagmap" Foreground="{StaticResource MutedInkBrush}" FontSize="12" />
+                                    <TextBox Text="{Binding DataDirectory, Mode=OneWay}"
+                                             IsReadOnly="True"
+                                             Margin="0,4,0,12"
+                                             automation:AutomationProperties.AutomationId="DataDirectoryTextBox" />
+                                    <StackPanel Orientation="Horizontal">
+                                        <Button Content="Map openen"
+                                                Command="{Binding OpenDataDirectoryCommand}"
+                                                Style="{StaticResource SecondaryButton}"
+                                                automation:AutomationProperties.AutomationId="OpenDataDirectoryButton" />
+                                        <Button Content="Cache vernieuwen"
+                                                Command="{Binding RebuildCacheCommand}"
+                                                Style="{StaticResource SecondaryButton}"
+                                                Margin="8,0,0,0"
+                                                automation:AutomationProperties.AutomationId="RebuildCacheButton" />
+                                    </StackPanel>
+                                    <TextBlock Text="Een verouderde cache wordt nooit automatisch naar een WING teruggeschreven."
+                                               Foreground="{StaticResource MutedInkBrush}"
+                                               FontSize="11"
+                                               Margin="0,12,0,0" />
+                                </StackPanel>
+                            </Border>
+
+                            <Border Style="{StaticResource Card}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel>
+                                        <TextBlock Text="Over WingSync" Style="{StaticResource SectionTitle}" />
+                                        <TextBlock Text="{Binding FullVersionText}" />
+                                        <TextBlock Text="Communicatie via x32ram/wapi; SLA opgenomen in het pakket."
+                                                   Foreground="{StaticResource MutedInkBrush}"
+                                                   Margin="0,6,0,0" />
+                                        <TextBlock Text="Behringer en WING zijn merken van hun respectieve eigenaren."
+                                                   Foreground="{StaticResource MutedInkBrush}"
+                                                   FontSize="11"
+                                                   Margin="0,3,0,0" />
+                                    </StackPanel>
+                                    <Button Grid.Column="1"
+                                            Content="Diagnose kopiëren"
+                                            Command="{Binding CopyDiagnosticsCommand}"
+                                            Style="{StaticResource SecondaryButton}"
+                                            VerticalAlignment="Top"
+                                            automation:AutomationProperties.AutomationId="CopyDiagnosticsButton" />
+                                </Grid>
+                            </Border>
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
+            </TabControl>
+        </Grid>
+
+        <Border Grid.Row="2"
+                Background="#20211F"
+                BorderBrush="#111211"
+                BorderThickness="0,1,0,0"
+                automation:AutomationProperties.AutomationId="NextStepFooter">
+            <Grid Margin="16,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <Border Width="4"
+                        Height="20"
+                        Background="#E5C600"
+                        CornerRadius="2"
+                        Margin="0,0,10,0"
+                        VerticalAlignment="Center" />
+                <StackPanel Grid.Column="1"
+                            Orientation="Horizontal"
+                            VerticalAlignment="Center">
+                    <TextBlock Text="VOLGENDE STAP"
+                               Foreground="#F0D527"
+                               FontSize="10"
+                               FontWeight="Bold"
+                               Margin="0,0,10,0" />
+                    <TextBlock Text="{Binding NextStepText}"
+                               Foreground="#ECECE8"
+                               FontSize="12"
+                               TextTrimming="CharacterEllipsis"
+                               ToolTip="{Binding NextStepText}"
+                               automation:AutomationProperties.AutomationId="NextStepFooterText"
+                               automation:AutomationProperties.Name="{Binding NextStepText}" />
+                </StackPanel>
+                <TextBlock Grid.Column="2"
+                           Text="Ctrl+1…4 navigeren  ·  Ctrl+Shift+S stoppen"
+                           Foreground="#A9AAA4"
+                           FontSize="10"
+                           VerticalAlignment="Center"
+                           automation:AutomationProperties.Name="Sneltoetsen: Control 1 tot 4 voor navigatie; Control Shift S voor stoppen" />
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

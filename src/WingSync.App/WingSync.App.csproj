@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <RootNamespace>WingSync.App</RootNamespace>
+    <AssemblyName>WingSync</AssemblyName>
+    <RuntimeFrameworkVersion>10.0.10</RuntimeFrameworkVersion>
+    <InvariantGlobalization>false</InvariantGlobalization>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\WingSync.Core\WingSync.Core.csproj" />
+    <ProjectReference Include="..\WingSync.Infrastructure\WingSync.Infrastructure.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Assets\wingsync-logo.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="..\..\LICENSES\wapi-SLA.pdf" Condition="Exists('..\..\LICENSES\wapi-SLA.pdf')">
+      <Link>LICENSES\wapi-SLA.pdf</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+</Project>

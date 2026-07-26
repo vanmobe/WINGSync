@@ -1,0 +1,15 @@
+.tools/
+.packages/
+.vs/
+.idea/
+bin/
+obj/
+build/
+artifacts/
+TestResults/
+tests/**/live-recovery/
+*.user
+*.suo
+*.log
+*.tmp
+*.dmp
