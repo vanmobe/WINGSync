@@ -515,7 +515,7 @@ public static partial class SupportBundleExporter
     private static partial Regex SerialContextRegex();
 
     [GeneratedRegex(
-        @"(?ix)(?:(?:(?<![A-Z0-9])[A-Z]:[\\/]|(?<![\\/])\\\\)[^\r\n""'<>|:*?]*?\.[A-Z0-9]{1,16}(?=$|[\s,;:)\]}""'])|(?:(?<![A-Z0-9])[A-Z]:[\\/]|(?<![\\/])\\\\)[^\r\n""']*)",
+        @"(?ix)(?:(?:(?<![A-Z0-9])[A-Z]:[\\/]|(?<![\\/])\\\\)[^\r\n""'<>|:*?]*?\.[A-Z0-9]{1,16}(?=$|[\s,;:.)\]}""'])|(?:(?<![A-Z0-9])[A-Z]:[\\/]|(?<![\\/])\\\\)[^\r\n""']*)",
         RegexOptions.CultureInvariant)]
     private static partial Regex WindowsAbsolutePathRegex();
 
