@@ -1969,7 +1969,7 @@ internal static class Program
                         coordinator.Metrics.ReconnectCount == 1 &&
                         target.GetValue("/ch/2/eq/g") == latest,
                     TimeSpan.FromSeconds(4),
-                    "Reconnect catch-up voltooide niet na het vrijgeven van SetMany.")
+                    "Reconnect catch-up did not complete after releasing SetMany.")
                 .ConfigureAwait(false);
         }
         finally
@@ -2892,10 +2892,10 @@ internal static class Program
             await Task.Delay(100).ConfigureAwait(false);
             AssertEx.False(
                 stopTask.IsCompleted,
-                "Stop retourneerde terwijl de reeds verstuurde transactie nog niet terminaal was.");
+                "Stop returned while the already-sent transaction was not yet terminal.");
             AssertEx.False(
                 confirmation.IsCompleted,
-                "Bevestiging eindigde terwijl de eerste SetMany nog geblokkeerd was.");
+                "Confirmation completed while the first SetMany was still blocked.");
             AssertEx.Equal(0, target.RequestedWrites.Count);
 
             gate.Release();
@@ -2916,12 +2916,12 @@ internal static class Program
         AssertEx.False(
             target.RequestedWrites.Any(static write =>
                 write.TokenPath == "/ch/12/eq/g"),
-            "Na de stopaanvraag werd een latere transactie-unit verstuurd.");
+            "A later transaction unit was sent after the stop request.");
         AssertEx.True(
             target.SnapshotRequests
                 .Skip(snapshotsBeforeRelease)
                 .Any(static token => token == "/ch/11/eq/g"),
-            "De reeds verstuurde eerste batch kreeg geen expliciete terminale readback.");
+            "The already-sent first batch did not receive an explicit terminal readback.");
     }
 
     private static async Task StopDrainsDispatchedWriteThroughReadbackAsync()

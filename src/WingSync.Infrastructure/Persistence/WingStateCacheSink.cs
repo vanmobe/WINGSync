@@ -95,7 +95,7 @@ public sealed class WingStateCacheSink : IWingStateSink, IAsyncDisposable
                 if (partition.Epoch != connectionEpoch)
                 {
                     throw new InvalidOperationException(
-                        $"Cache-epoch voor {role} veranderde tijdens een observatie.");
+                        $"Cache epoch for {role} changed during an observation.");
                 }
 
                 foreach (var parameter in parameters)
@@ -103,7 +103,7 @@ public sealed class WingStateCacheSink : IWingStateSink, IAsyncDisposable
                     if (parameter.TokenPath.Length is < 2 or > 512 ||
                         parameter.TokenPath[0] != '/')
                     {
-                        throw new InvalidDataException("Cache accepteert alleen canonieke WING-tokenpaden.");
+                        throw new InvalidDataException("Cache accepts only canonical WING token paths.");
                     }
 
                     var revision = ++partition.Revision;

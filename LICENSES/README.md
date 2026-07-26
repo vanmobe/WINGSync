@@ -1,13 +1,13 @@
-# Licenties van derden
+# Third-party licenses
 
-WingSync gebruikt de statisch gekoppelde **wapi**-bibliotheek van
-[x32ram](https://x32ram.com/wapi/) om met Behringer WING-consoles te
-communiceren.
+WingSync uses the statically linked **wapi** library from
+[x32ram](https://x32ram.com/wapi/) to communicate with Behringer WING
+consoles.
 
-De wapi Software License Agreement wordt als `wapi-SLA.pdf` in het
-Windows-pakket opgenomen. De API wordt niet door WingSync aan derden
-blootgesteld.
+The wapi Software License Agreement is included as `wapi-SLA.pdf` in the
+Windows package. The API is not exposed to third parties by WingSync.
 
-Het draagbare pakket bevat daarnaast de Microsoft .NET `LICENSE.txt` en
-`ThirdPartyNotices.txt` van de exacte runtime waarmee de self-contained build
-is gemaakt. De runtimeversie staat in de bestandsnamen in `LICENSES`.
+The portable package also contains the Microsoft .NET `LICENSE.txt` and
+`ThirdPartyNotices.txt` for the exact runtime used to create the
+self-contained build. The runtime version appears in the filenames in
+`LICENSES`.

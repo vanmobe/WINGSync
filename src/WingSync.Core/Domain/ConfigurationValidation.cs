@@ -257,7 +257,7 @@ public static class ConfigValidator
             issues.Add(Error(
                 ValidationIssueCode.NonStandardPort,
                 $"{path}.{nameof(endpoint.Port)}",
-                $"Deze WAPI-adapter ondersteunt uitsluitend TCP port {WingEndpoint.DefaultPort}."));
+                $"This WAPI adapter supports only TCP port {WingEndpoint.DefaultPort}."));
         }
 
         if (string.IsNullOrWhiteSpace(endpoint.ExpectedSerial))
@@ -266,11 +266,11 @@ public static class ConfigValidator
                 ? Error(
                     ValidationIssueCode.MissingSerialPin,
                     $"{path}.{nameof(endpoint.ExpectedSerial)}",
-                    "Live writes vereisen een vastgezet hardware-serienummer voor elke console.")
+                    "Live writes require a pinned hardware serial number for each console.")
                 : Warning(
                     ValidationIssueCode.MissingSerialPin,
                     $"{path}.{nameof(endpoint.ExpectedSerial)}",
-                    "Zet deze rol vast op het ontdekte hardware-serienummer vóór live writes."));
+                    "Pin this role to the discovered hardware serial number before live writes."));
         }
         else if (!IsValidSerial(endpoint.ExpectedSerial))
         {
@@ -371,7 +371,7 @@ public static class ConfigValidator
             issues.Add(Error(
                 ValidationIssueCode.UnsafeVerificationPolicy,
                 $"{nameof(AppConfiguration.Safety)}.{nameof(safety.RequireReadback)}",
-                "Iedere live write moet via readback worden geverifieerd."));
+                "Every live write must be verified through readback."));
         }
 
         if (!float.IsFinite(safety.FloatTolerance)

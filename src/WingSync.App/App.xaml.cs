@@ -37,11 +37,11 @@ public partial class App : Application
 
             MessageBox.Show(
                 stopped
-                    ? $"WingSync heeft een onverwachte fout opgevangen.\n\n{args.Exception.Message}\n\n" +
-                      "De synchronisatie is fail-safe gestopt. Bekijk Activiteit voor details."
-                    : $"WingSync heeft een onverwachte fout opgevangen.\n\n{args.Exception.Message}\n\n" +
-                      "Een veilige stop kon niet worden bevestigd; WingSync wordt afgesloten.",
-                "WingSync – onverwachte fout",
+                    ? $"WingSync caught an unexpected error.\n\n{args.Exception.Message}\n\n" +
+                      "Synchronization was stopped fail-safe. See Activity for details."
+                    : $"WingSync caught an unexpected error.\n\n{args.Exception.Message}\n\n" +
+                      "A safe stop could not be confirmed; WingSync will close.",
+                "WingSync – unexpected error",
                 MessageBoxButton.OK,
                 MessageBoxImage.Error);
             if (!stopped)

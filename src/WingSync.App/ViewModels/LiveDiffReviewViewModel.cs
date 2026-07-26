@@ -39,7 +39,7 @@ public sealed class LiveDiffReviewViewModel
         ExecutableChanges = executableChanges;
         BlockedChanges = blockedChanges;
         GeneratedAtSummary =
-            $"Berekend om {generatedAt.ToLocalTime().ToString("HH:mm:ss.fff", CultureInfo.CurrentCulture)}";
+            $"Calculated at {generatedAt.ToLocalTime().ToString("HH:mm:ss.fff", CultureInfo.CurrentCulture)}";
         HighRiskArmed = highRiskArmed;
         this.scopeCounts = Array.AsReadOnly(scopeCounts.ToArray());
         this.tokens = Array.AsReadOnly(tokens.ToArray());
@@ -69,11 +69,11 @@ public sealed class LiveDiffReviewViewModel
 
     public IReadOnlyList<LiveDiffTokenViewModel> Tokens => tokens;
 
-    public string TokenListHeader => $"Optionele tokenlijst ({TotalChanges})";
+    public string TokenListHeader => $"Optional token list ({TotalChanges})";
 
     public string TokenListSummary => tokens.Count == TotalChanges
-        ? "Alle verse bron- en doeltokens; parameterwaarden worden hier niet getoond."
-        : $"Toont {tokens.Count} van {TotalChanges} verse tokens; de volledige audittrail staat lokaal in Activiteit.";
+        ? "All fresh source and target tokens; parameter values are not shown here."
+        : $"Showing {tokens.Count} of {TotalChanges} fresh tokens; the full audit trail is stored locally in Activity.";
 }
 
 public sealed record LiveDiffScopeCountViewModel(string ScopeName, int ChangeCount);

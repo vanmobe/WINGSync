@@ -29,7 +29,7 @@ public sealed class WingIdentityVerifier : IWingIdentityVerifier
         ArgumentNullException.ThrowIfNull(endpoint);
         if (!IPAddress.TryParse(endpoint.IpAddress, out var configuredAddress))
         {
-            throw new InvalidOperationException($"'{endpoint.IpAddress}' is geen geldig IP-adres.");
+            throw new InvalidOperationException($"'{endpoint.IpAddress}' is not a valid IP address.");
         }
 
         var result = await discovery.DiscoverAsync(options, cancellationToken).ConfigureAwait(false);
@@ -42,15 +42,15 @@ public sealed class WingIdentityVerifier : IWingIdentityVerifier
         {
             var issueSummary = result.Issues.Count == 0
                 ? string.Empty
-                : $" Netwerkdetails: {string.Join("; ", result.Issues.Select(static issue => issue.Message))}";
+                : $" Network details: {string.Join("; ", result.Issues.Select(static issue => issue.Message))}";
             throw new InvalidOperationException(
-                $"Geen WING-discoveryantwoord ontvangen van {endpoint.IpAddress}.{issueSummary}");
+                $"No WING discovery reply received from {endpoint.IpAddress}.{issueSummary}");
         }
 
         if (matches.Length > 1)
         {
             throw new InvalidOperationException(
-                $"Meerdere WING-identiteiten adverteren adres {endpoint.IpAddress}.");
+                $"Multiple WING identities are advertising address {endpoint.IpAddress}.");
         }
 
         var identity = matches[0];
