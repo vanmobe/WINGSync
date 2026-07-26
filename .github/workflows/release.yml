@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   build-release:
-    runs-on: windows-latest
+    runs-on: windows-2022
 
     steps:
       - uses: actions/checkout@v4
@@ -38,6 +38,7 @@ jobs:
           name: WingSync ${{ github.ref_name }}
           fail_on_unmatched_files: true
           files: |
+            artifacts/WingSync-portable-win-x64-*.zip
             artifacts/WingSync-portable-win-x64-*.zip.sha256
           generate_release_notes: true
           draft: false
