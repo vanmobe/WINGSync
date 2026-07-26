@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    runs-on: windows-2022
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Configure native build
+        run: cmake --fresh -S native -B build/native -G "Visual Studio 17 2022" -A x64
+
+      - name: Build native
+        run: cmake --build build/native --config Release --parallel
+
+      - name: Restore managed solution
+        run: dotnet restore WingSync.slnx
+
+      - name: Build managed solution
+        run: dotnet build WingSync.slnx -c Release --no-restore
+
+      - name: Run core tests
+        run: dotnet run --project tests/WingSync.Core.Tests -c Release --no-build
+
+      - name: Run integration tests
+        run: dotnet run --project tests/WingSync.Integration.Tests -c Release --no-build
+
+      - name: Run native helper self-test
+        shell: pwsh
+        run: |
+          $candidates = @(
+            "build/native/Release/WingSync.WapiHost.exe",
+            "build/native/WapiHost/Release/WingSync.WapiHost.exe"
+          )
+          $helper = $candidates | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
+          if (-not $helper) { throw 'WingSync.WapiHost.exe was not found after native build.' }
+          & $helper --self-test
+          if ($LASTEXITCODE -ne 0) { throw "Native helper self-test failed with exit code $LASTEXITCODE." }
