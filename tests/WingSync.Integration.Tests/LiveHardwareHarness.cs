@@ -634,7 +634,7 @@ internal static class LiveHardwareHarness
                         AssertConnectedSerialAsync(
                             stage,
                             pins.StageSerial,
-                            "Stage recovery vlak voor write",
+                            "Stage recovery before write",
                             cancellationToken))
                     .ConfigureAwait(false);
                 await AssertStillSilentAsync(

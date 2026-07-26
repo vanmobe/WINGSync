@@ -1,4 +1,3 @@
-\
 # WingSync
 
 WingSync is a standalone Windows app for safe, configurable one-way

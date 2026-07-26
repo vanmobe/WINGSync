@@ -116,7 +116,7 @@ internal static class UiScenarios
         AssertEx.False(app.FindById("StopButton").Current.IsEnabled);
         app.WaitForElementNameContaining(
             "SetupProgressIndicator",
-            "2 van vier",
+            "2 of four",
             TimeSpan.FromSeconds(5));
         var visibleProblem = app.TryFindById("ProblemBanner");
         AssertEx.True(
@@ -649,7 +649,7 @@ internal static class UiScenarios
             TimeSpan.FromSeconds(10));
         app.WaitForElementNameContaining(
             "SetupProgressIndicator",
-            "Setup voltooid",
+            "Setup complete",
             TimeSpan.FromSeconds(5));
         app.Navigate("NavigationSync", "Configure synchronization");
         app.ToggleTo("DryRunCheckBox", ToggleState.Off);
@@ -726,7 +726,7 @@ internal static class UiScenarios
                 return
                     runMode?.Current.Name ==
                         "APPLYING LIVE · WRITES + READBACK" &&
-                    overall?.Current.Name == "Live toepassen" &&
+                    overall?.Current.Name == "Applying live" &&
                     flow?.Current.Name == "WRITING + READING BACK" &&
                     stop?.Current.IsEnabled == true;
             },
@@ -939,13 +939,13 @@ internal static class UiScenarios
         app.Invoke("TestConnectionsButton");
         app.WaitForElementNameContaining(
             "DiscoveryStatusText",
-            "WAPI gezond",
+            "WAPI healthy",
             TimeSpan.FromSeconds(12));
         app.WaitForEnabled("StartButton", enabled: true);
         app.Navigate("NavigationStatus", "Status");
         app.WaitForElementNameContaining(
             "SetupProgressIndicator",
-            "3 van vier",
+            "3 of four",
             TimeSpan.FromSeconds(5));
         app.Navigate("NavigationSync", "Configure synchronization");
     }

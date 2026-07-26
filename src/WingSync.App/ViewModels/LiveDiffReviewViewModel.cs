@@ -73,7 +73,7 @@ public sealed class LiveDiffReviewViewModel
 
     public string TokenListSummary => tokens.Count == TotalChanges
         ? "All fresh source and target tokens; parameter values are not shown here."
-        : $"Showing {tokens.Count} of {TotalChanges}  fresh tokens; the full audit trail is stored locally in Activity.";
+        : $"Showing {tokens.Count} of {TotalChanges} fresh tokens; the full audit trail is stored locally in Activity.";
 }
 
 public sealed record LiveDiffScopeCountViewModel(string ScopeName, int ChangeCount);

@@ -1,4 +1,3 @@
-\
 # WingSync user guide
 
 WingSync follows a live-audio workflow: first verify identity and direction,

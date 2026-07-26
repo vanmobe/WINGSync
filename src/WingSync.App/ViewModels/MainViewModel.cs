@@ -1838,7 +1838,7 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
         }
         else
         {
-            ValidationSummary = "Configuration is geldig.";
+            ValidationSummary = "Configuration is valid.";
             ValidationBrush = Green;
         }
     }
@@ -2625,7 +2625,7 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
         var expectedSerial = ResolveConfiguredSerial(configured, ipAddress);
         return expectedSerial is null
             ? "NOT CONFIRMED"
-            : $"{expectedSerial} · VERWACHT, OFFLINE NOT CONFIRMED";
+            : $"{expectedSerial} · EXPECTED, OFFLINE NOT CONFIRMED";
     }
 
     private static string ResolveIdentityStatus(

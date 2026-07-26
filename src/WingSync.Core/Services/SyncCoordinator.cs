@@ -1234,8 +1234,8 @@ public sealed class SyncCoordinator : IAsyncDisposable
             if (protectiveWrites.Length == 0)
             {
                 throw new IOException(
-                    $"Processor group {unit.TransactionGroup} bevat een model-/delaymutatie " +
-                    "zonder een eenduidige veilige enablewaarde; no writes were sent.");
+                    $"Processor group {unit.TransactionGroup} contains a model/delay mutation " +
+                    "without an unambiguous safe enable value; no writes were sent.");
             }
 
             // Capture and protect exactly one physical processor group at a time.
@@ -1986,7 +1986,7 @@ public sealed class SyncCoordinator : IAsyncDisposable
                 if (!targetPreflight.TryGetValue(targetToken, out var targetValue))
                 {
                     throw new IOException(
-                        $"Processor group {unit.TransactionGroup} mist een geplande targetwrite " +
+                        $"Processor group {unit.TransactionGroup} is missing a planned target write " +
                         $"for canonical safety guard {targetToken}; no writes were sent.");
                 }
 
@@ -2035,8 +2035,7 @@ public sealed class SyncCoordinator : IAsyncDisposable
                         tolerance))
                 {
                     throw new IOException(
-                        $"The exact enable values for {sourceToken} and {targetToken} match " +
-                        "do not match the plan in a type-safe way; no writes were sent.");
+                        $"The exact enable values for {sourceToken} and {targetToken} do not match the plan in a type-safe way; no writes were sent.");
                 }
 
                 var expectedFinalPhase = IsEnableActive(finalWrite.TargetPath, finalWrite.Value)

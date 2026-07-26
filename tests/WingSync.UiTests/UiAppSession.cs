@@ -86,7 +86,7 @@ internal sealed class UiAppSession : IDisposable
                     var overallStatus = session.TryFindById("OverallStatusText");
                     return startButton is not null &&
                            startButton.Current.Name.Equals(
-                               demoDiscoveryOffline ? "Setup vereist" : "Test connection",
+                               demoDiscoveryOffline ? "Setup required" : "Test connection",
                                StringComparison.Ordinal) &&
                            overallStatus is not null &&
                            overallStatus.Current.Name.Equals(
