@@ -37,7 +37,7 @@ internal sealed record LiveHardwareOptions(
             var argument = arguments[index];
             if (!seen.Add(argument))
             {
-                throw new LiveWriteSafetyException($"Dubbele optie '{argument}' is niet toegestaan.");
+                throw new LiveWriteSafetyException($"Duplicate option '{argument}' is not allowed.");
             }
 
             switch (argument)
@@ -58,39 +58,39 @@ internal sealed record LiveHardwareOptions(
                     stageSerial = ReadValue(arguments, ref index, argument);
                     break;
                 default:
-                    throw new LiveWriteSafetyException($"Onbekende live-testoptie '{argument}'.");
+                    throw new LiveWriteSafetyException($"Unknown live-test option '{argument}'.");
             }
         }
 
         if (readOnly == writes)
         {
             throw new LiveWriteSafetyException(
-                "Kies exact één modus: --live-read-only of --live-writes.");
+                "Choose exactly one mode: --live-read-only or --live-writes.");
         }
 
         if (readOnly && acknowledgement)
         {
             throw new LiveWriteSafetyException(
-                "Read-only modus accepteert geen live-writebevestiging.");
+                "Read-only mode does not accept live-write confirmation.");
         }
 
         if (string.IsNullOrWhiteSpace(fohSerial) || string.IsNullOrWhiteSpace(stageSerial))
         {
             throw new LiveWriteSafetyException(
-                "Live hardwaretests vereisen --foh-serial en --stage-serial; " +
-                "identiteiten worden uitsluitend tijdens runtime gepind.");
+                "Live hardware tests require --foh-serial and --stage-serial; " +
+                "identities are pinned only at runtime.");
         }
 
         if (string.Equals(fohSerial, stageSerial, StringComparison.Ordinal))
         {
             throw new LiveWriteSafetyException(
-                "FOH en podium moeten verschillende serienummers hebben.");
+                "FOH and stage must have different serial numbers.");
         }
 
         if (writes && !acknowledgement)
         {
             throw new LiveWriteSafetyException(
-                "--live-writes vereist daarnaast exact --i-understand-live-writes.");
+                "--live-writes additionally requires exactly --i-understand-live-writes.");
         }
 
         return new LiveHardwareOptions(readOnly, writes, acknowledgement, fohSerial, stageSerial);
@@ -144,7 +144,7 @@ internal static class LiveHardwareHarness
         var identities = await DiscoverExactPairAsync(pins, cancellationToken).ConfigureAwait(false);
         var observer = new RecordingObserver();
         await using var fohSession = new WapiProcessSession("FOH live read-only", helperPath, observer);
-        await using var stageSession = new WapiProcessSession("Podium live read-only", helperPath, observer);
+        await using var stageSession = new WapiProcessSession("Stage live read-only", helperPath, observer);
         var cleanDisconnect = false;
         try
         {
@@ -162,11 +162,11 @@ internal static class LiveHardwareHarness
             await AssertConnectedSerialAsync(
                     stageSession,
                     pins.StageSerial,
-                    "Podium",
+                    "Stage",
                     cancellationToken)
                 .ConfigureAwait(false);
             await ReadRequiredNodesAsync(fohSession, "FOH", cancellationToken).ConfigureAwait(false);
-            await ReadRequiredNodesAsync(stageSession, "Podium", cancellationToken).ConfigureAwait(false);
+            await ReadRequiredNodesAsync(stageSession, "Stage", cancellationToken).ConfigureAwait(false);
 
             var keepaliveStopwatch = Stopwatch.StartNew();
             var pingCount = 0;
@@ -202,11 +202,11 @@ internal static class LiveHardwareHarness
 
         if (!cleanDisconnect)
         {
-            throw new IOException("De twee read-only helpers zijn niet schoon losgekoppeld.");
+            throw new IOException("The two read-only helpers were not cleanly disconnected.");
         }
 
         Console.WriteLine(
-            "PASS  LIVE READ-ONLY: exacte discovery, twee helpers, $SYSCFG/$STAT/CH40, " +
+            "PASS  LIVE READ-ONLY: exact discovery, two helpers, $SYSCFG/$STAT/CH40, " +
             "keepalive >=12s en clean disconnect.");
     }
 
@@ -229,10 +229,10 @@ internal static class LiveHardwareHarness
                 StringComparison.Ordinal))
         {
             throw new LiveWriteSafetyException(
-                $"{role}: verbonden WAPI $SYSCFG-serienummer wijkt af van de hardwarepin.");
+                $"{role}: connected WAPI $SYSCFG serial number differs from the hardware pin.");
         }
 
-        Console.WriteLine($"{role}: verbonden WAPI-identiteit opnieuw aan serial-pin gebonden.");
+        Console.WriteLine($"{role}: connected WAPI identity rebound to the serial pin.");
     }
 
     private static async Task RunLiveWritesAsync(
@@ -249,7 +249,7 @@ internal static class LiveHardwareHarness
         var observer = new RecordingObserver();
         var allowedTokens = new HashSet<string>(StringComparer.Ordinal);
         var rawFoh = new WapiProcessSession("FOH live guarded", helperPath, observer);
-        var rawStage = new WapiProcessSession("Podium live guarded", helperPath, observer);
+        var rawStage = new WapiProcessSession("Stage live guarded", helperPath, observer);
         var fohSession = new GuardedLiveSession(rawFoh, allowedTokens, testChannel);
         var stageSession = new GuardedLiveSession(rawStage, allowedTokens, testChannel);
         var observedFohEvents = new ConcurrentQueue<WingParameter>();
@@ -286,7 +286,7 @@ internal static class LiveHardwareHarness
             if (coordinator.Status.State != SyncCoordinatorState.RunningLive)
             {
                 throw new LiveWriteSafetyException(
-                    $"Coordinator is niet veilig live gestart: {coordinator.Status.State}.");
+                    $"Coordinator did not start live safely: {coordinator.Status.State}.");
             }
 
             var fohSnapshot = await RequireStableSnapshotAsync(
@@ -300,7 +300,7 @@ internal static class LiveHardwareHarness
                     stageSession,
                     $"/ch/{testChannel}",
                     80,
-                    "Podium",
+                    "Stage",
                     cancellationToken)
                 .ConfigureAwait(false);
             var mutationPlan = Channel40Preflight.ValidateAndPlan(
@@ -357,7 +357,7 @@ internal static class LiveHardwareHarness
                     targetOriginal != mutation.TargetOriginal)
                 {
                     throw new LiveWriteSafetyException(
-                        $"Token {mutation.TokenPath} veranderde na de preflight; writes worden overgeslagen.");
+                        $"Token {mutation.TokenPath} changed after preflight; writes are skipped.");
                 }
 
                 var recovery = new RecoveryEntry(
@@ -396,14 +396,14 @@ internal static class LiveHardwareHarness
             }
 
             Console.WriteLine(
-                $"LIVE WRITE-proef synchroniseerde {mutationPlan.Count} toegestane " +
+                $"LIVE WRITE test synchronized {mutationPlan.Count} allowed " +
                 $"CH{testChannel}-tokens; " +
-                "exact herstel volgt verplicht in finally.");
+                "exact restore is required in finally.");
         }
         catch (Exception exception)
         {
             Console.Error.WriteLine(
-                $"Live coordinatorstatus bij fout: {coordinator.Status.State} - " +
+                $"Live coordinator status on error: {coordinator.Status.State} - " +
                 coordinator.Status.Detail);
             foreach (var diagnostic in observer.Diagnostics.TakeLast(12))
             {
@@ -426,7 +426,7 @@ internal static class LiveHardwareHarness
             foreach (var parameter in observedStageEvents.TakeLast(12))
             {
                 Console.Error.WriteLine(
-                    $"PODIUM EVENT {parameter.TokenPath} ({parameter.Value.Type})");
+                    $"STAGE EVENT {parameter.TokenPath} ({parameter.Value.Type})");
             }
 
             testFailure = exception;
@@ -467,8 +467,8 @@ internal static class LiveHardwareHarness
         if (recoveryFailure is not null)
         {
             throw new AggregateException(
-                "LIVE TEST HERSTEL MISLUKT. Gebruik het recovery-journal voordat de consoles " +
-                $"voor een show worden ingezet. Journal: {journal?.FilePath ?? "(niet aangemaakt)"}",
+                "LIVE TEST RECOVERY FAILED. Use the recovery journal before the consoles " +
+                $"are used for a show. Journal: {journal?.FilePath ?? "(not created)"}",
                 testFailure is null ? [recoveryFailure] : [testFailure, recoveryFailure]);
         }
 
@@ -478,8 +478,8 @@ internal static class LiveHardwareHarness
         }
 
         Console.WriteLine(
-            $"PASS  LIVE WRITES: uitsluitend CUST en uitgeschakelde EQ/GATE/DYN-scalars; " +
-            $"beide consoles exact hersteld. Journal: {journal!.FilePath}");
+            $"PASS  LIVE WRITES: only CUST and disabled EQ/GATE/DYN scalars; " +
+            $"both consoles restored exactly. Journal: {journal!.FilePath}");
     }
 
     private static async Task<int> FindProvablySilentChannelAsync(
@@ -488,11 +488,11 @@ internal static class LiveHardwareHarness
         CancellationToken cancellationToken)
     {
         Console.WriteLine(
-            "Read-only veiligheidsselectie: invoerkanalen 40..1 worden op beide consoles " +
-            "gecontroleerd; tijdens deze stap zijn writes onmogelijk.");
+            "Read-only safety selection: input channels 40..1 are checked on both consoles " +
+            "during this step writes are impossible.");
         var observer = new RecordingObserver();
         await using var foh = new WapiProcessSession("FOH safety scan", helperPath, observer);
-        await using var stage = new WapiProcessSession("Podium safety scan", helperPath, observer);
+        await using var stage = new WapiProcessSession("Stage safety scan", helperPath, observer);
         var rejected = new List<string>();
         var selectedChannel = 0;
         var cleanDisconnect = false;
@@ -511,7 +511,7 @@ internal static class LiveHardwareHarness
                     AssertConnectedSerialAsync(
                         stage,
                         identities.Stage.SerialNumber,
-                        "Podium safety scan",
+                        "Stage safety scan",
                         cancellationToken))
                 .ConfigureAwait(false);
 
@@ -551,13 +551,13 @@ internal static class LiveHardwareHarness
         {
             var examples = string.Join(" | ", rejected.Take(2));
             throw new LiveWriteSafetyException(
-                "Geen invoerkanaal was op beide consoles aantoonbaar stil én geschikt voor de " +
-                $"CUST/EQ/GATE/DYN-proef. Er zijn geen writes uitgevoerd. Eerste afwijzingen: {examples}");
+                "No input channel was demonstrably silent on both consoles and suitable for the " +
+                $"CUST/EQ/GATE/DYN test. No writes were executed. First rejections: {examples}");
         }
 
         Console.WriteLine(
-            $"Veiligheidsselectie koos CH{selectedChannel}; alle stiltevoorwaarden gelden op " +
-            "beide consoles. Vóór iedere write volgt opnieuw een verse preflight.");
+            $"Safety selection chose CH{selectedChannel}; all silence conditions apply on " +
+            "both consoles. A fresh preflight follows before every write.");
         return selectedChannel;
     }
 
@@ -578,11 +578,11 @@ internal static class LiveHardwareHarness
                 stageSession,
                 $"/ch/{channel}",
                 80,
-                "Podium",
+                "Stage",
                 cancellationToken)
             .ConfigureAwait(false);
         Channel40Preflight.AssertSilent(fohSnapshot, "FOH", channel);
-        Channel40Preflight.AssertSilent(stageSnapshot, "Podium", channel);
+        Channel40Preflight.AssertSilent(stageSnapshot, "Stage", channel);
     }
 
     private static async Task RestoreExactlyAsync(
@@ -597,7 +597,7 @@ internal static class LiveHardwareHarness
         var identities = await DiscoverExactPairAsync(pins, cancellationToken).ConfigureAwait(false);
         var observer = new RecordingObserver();
         await using var rawFoh = new WapiProcessSession("FOH recovery", helperPath, observer);
-        await using var rawStage = new WapiProcessSession("Podium recovery", helperPath, observer);
+        await using var rawStage = new WapiProcessSession("Stage recovery", helperPath, observer);
         await using var foh = new GuardedLiveSession(rawFoh, allowedTokens, channel);
         await using var stage = new GuardedLiveSession(rawStage, allowedTokens, channel);
         var disconnected = false;
@@ -616,7 +616,7 @@ internal static class LiveHardwareHarness
                     AssertConnectedSerialAsync(
                         stage,
                         pins.StageSerial,
-                        "Podium recovery",
+                        "Stage recovery",
                         cancellationToken))
                 .ConfigureAwait(false);
 
@@ -629,12 +629,12 @@ internal static class LiveHardwareHarness
                         AssertConnectedSerialAsync(
                             foh,
                             pins.FohSerial,
-                            "FOH recovery vlak voor write",
+                            "FOH recovery before write",
                             cancellationToken),
                         AssertConnectedSerialAsync(
                             stage,
                             pins.StageSerial,
-                            "Podium recovery vlak voor write",
+                            "Stage recovery before write",
                             cancellationToken))
                     .ConfigureAwait(false);
                 await AssertStillSilentAsync(
@@ -727,7 +727,7 @@ internal static class LiveHardwareHarness
             tokenPath,
             expected,
             last,
-            $"Live readback voor {tokenPath} bleef niet minstens " +
+            $"Live readback for {tokenPath} did not remain at least " +
             $"{stableFor.TotalMilliseconds:F0} ms exact stabiel.");
     }
 
@@ -743,7 +743,7 @@ internal static class LiveHardwareHarness
         if (exact.Length != 1)
         {
             throw new LiveWriteSafetyException(
-                $"Verwacht exact één verse scalar voor {tokenPath}, ontvangen {exact.Length}.");
+                $"Expected exactly one fresh scalar for {tokenPath}, received {exact.Length}.");
         }
 
         return exact[0].Value;
@@ -764,7 +764,7 @@ internal static class LiveHardwareHarness
             status.Any(static item => !item.TokenPath.StartsWith("/$stat", StringComparison.Ordinal)) ||
             channel40.Any(static item => !item.TokenPath.StartsWith("/ch/40/", StringComparison.Ordinal)))
         {
-            throw new InvalidDataException($"{role}: een snapshot bevatte waarden buiten de gevraagde node.");
+            throw new InvalidDataException($"{role}: a snapshot contained values outside the requested node.");
         }
 
         Console.WriteLine(
@@ -781,7 +781,7 @@ internal static class LiveHardwareHarness
         if (snapshot.Count < minimumCount)
         {
             throw new InvalidDataException(
-                $"Snapshot {nodeToken} is onvolledig: {snapshot.Count}, minimaal {minimumCount} verwacht.");
+                $"Snapshot {nodeToken} is incomplete: {snapshot.Count}, minimum {minimumCount} expected.");
         }
 
         var duplicate = snapshot
@@ -825,7 +825,7 @@ internal static class LiveHardwareHarness
         }
 
         throw new InvalidDataException(
-            $"{role}: vier verse snapshots van {nodeToken} bleven onvolledig; writes zijn geblokkeerd.",
+            $"{role}: four fresh snapshots of {nodeToken} remained incomplete; writes are blocked.",
             lastFailure);
     }
 
@@ -844,18 +844,18 @@ internal static class LiveHardwareHarness
                 cancellationToken)
             .ConfigureAwait(false);
         var foh = RequireExactIdentity(result, "FOH", pins.FohSerial);
-        var stage = RequireExactIdentity(result, "Podium", pins.StageSerial);
+        var stage = RequireExactIdentity(result, "Stage", pins.StageSerial);
         if (string.Equals(foh.SerialNumber, stage.SerialNumber, StringComparison.OrdinalIgnoreCase))
         {
-            throw new LiveWriteSafetyException("FOH en podium resolveerden naar hetzelfde serienummer.");
+            throw new LiveWriteSafetyException("FOH and stage resolved to the same serial number.");
         }
         if (string.Equals(foh.IpAddress, stage.IpAddress, StringComparison.OrdinalIgnoreCase))
         {
-            throw new LiveWriteSafetyException("FOH en podium resolveerden naar hetzelfde IP-adres.");
+            throw new LiveWriteSafetyException("FOH and stage resolved to the same IP address.");
         }
 
         Console.WriteLine(
-            $"Verse discovery bevestigd: {foh.Name} {foh.IpAddress}/{foh.SerialNumber}; " +
+            $"Fresh discovery confirmed: {foh.Name} {foh.IpAddress}/{foh.SerialNumber}; " +
             $"{stage.Name} {stage.IpAddress}/{stage.SerialNumber}.");
         return new ExpectedPair(foh, stage);
     }
@@ -874,15 +874,15 @@ internal static class LiveHardwareHarness
         if (exactSerialMatches.Length != 1)
         {
             throw new LiveWriteSafetyException(
-                $"{role}: discovery vond {exactSerialMatches.Length} consoles met het exact " +
-                "opgegeven serienummer.");
+                $"{role}: discovery found {exactSerialMatches.Length} consoles with the exact " +
+                "specified serial number.");
         }
 
         var identity = exactSerialMatches[0];
         if (!IPAddress.TryParse(identity.IpAddress, out _))
         {
             throw new LiveWriteSafetyException(
-                $"{role}: discovery leverde geen bruikbaar IP-adres voor de serienummerpin.");
+                $"{role}: discovery did not return a usable IP address for the serial pin.");
         }
 
         return identity;
@@ -900,7 +900,7 @@ internal static class LiveHardwareHarness
         if (foh.State != WingSessionState.Disconnected ||
             stage.State != WingSessionState.Disconnected)
         {
-            throw new IOException("Niet alle helpers meldden een schone disconnect.");
+            throw new IOException("Not all helpers reported a clean disconnect.");
         }
     }
 
@@ -964,11 +964,11 @@ internal static class LiveHardwareHarness
             }
 
             throw new FileNotFoundException(
-                "WingSync.WapiHost.exe ontbreekt; bouw eerst de native helper.",
+                "WingSync.WapiHost.exe is missing; build the native helper first.",
                 candidates[0]);
         }
 
-        throw new FileNotFoundException("Repository-root voor de native helper werd niet gevonden.");
+        throw new FileNotFoundException("Repository root for the native helper was not found.");
     }
 
     private sealed record HardwarePins(string FohSerial, string StageSerial);
@@ -999,7 +999,7 @@ internal static class LiveHardwareHarness
                 return pair.Stage;
             }
 
-            throw new LiveWriteSafetyException("Coordinator vroeg een niet-goedgekeurd endpoint op.");
+            throw new LiveWriteSafetyException("Coordinator requested a non-approved endpoint.");
         }
     }
 }
@@ -1019,7 +1019,7 @@ internal static class Channel40Preflight
     {
         ValidateChannel(channel);
         AssertSilent(fohSnapshot, "FOH", channel);
-        AssertSilent(stageSnapshot, "Podium", channel);
+        AssertSilent(stageSnapshot, "Stage", channel);
         var foh = ToMap(fohSnapshot, channel);
         var stage = ToMap(stageSnapshot, channel);
         var prefix = $"/ch/{channel}";
@@ -1107,11 +1107,11 @@ internal static class Channel40Preflight
     {
         var token = $"/ch/{channel}/name";
         var source = Require(foh, token, "FOH");
-        var target = Require(stage, token, "Podium");
+        var target = Require(stage, token, "Stage");
         if (source.Type != WingValueType.S || target.Type != WingValueType.S)
         {
             throw new LiveWriteSafetyException(
-                $"CH{channel} CUST-naam is niet op beide consoles een string.");
+                $"CH{channel} CUST name is not a string on both consoles.");
         }
 
         var test = source.AsString().Equals("WSYNC-TST", StringComparison.Ordinal)
@@ -1149,8 +1149,8 @@ internal static class Channel40Preflight
                     .Take(16)
                     .Select(static pair => $"{pair.Key}={pair.Value.Type}:{pair.Value}"));
             throw new LiveWriteSafetyException(
-                $"Geen ondubbelzinnige, eindige {scope}-float-scalar op CH{channel} gevonden. " +
-                $"Waargenomen onder {prefix}: {observed}");
+                $"No unambiguous, finite {scope}-float scalar found on CH{channel}. " +
+                $"Observed under {prefix}: {observed}");
         }
 
         var selected = candidates[0];
@@ -1167,7 +1167,7 @@ internal static class Channel40Preflight
         if (!float.IsFinite(testValue) || testValue.Equals(original))
         {
             throw new LiveWriteSafetyException(
-                $"Kon geen conservatieve testwaarde voor {selected.Key} afleiden.");
+                $"Could not derive a conservative test value for {selected.Key}.");
         }
 
         return new LiveMutation(
@@ -1187,7 +1187,7 @@ internal static class Channel40Preflight
             if (!result.TryAdd(parameter.TokenPath, parameter.Value))
             {
                 throw new LiveWriteSafetyException(
-                    $"Dubbel CH{channel}-token in preflight: {parameter.TokenPath}.");
+                    $"Duplicate CH{channel} token in preflight: {parameter.TokenPath}.");
             }
         }
 
@@ -1200,7 +1200,7 @@ internal static class Channel40Preflight
         string role) =>
         values.TryGetValue(token, out var value)
             ? value
-            : throw new LiveWriteSafetyException($"{role}: verplicht preflight-token {token} ontbreekt.");
+            : throw new LiveWriteSafetyException($"{role}: required preflight token {token} is missing.");
 
     private static void RequireOff(
         IReadOnlyDictionary<string, WingValue> values,
@@ -1211,7 +1211,7 @@ internal static class Channel40Preflight
         if (value.Type != WingValueType.S ||
             !value.AsString().Equals("OFF", StringComparison.OrdinalIgnoreCase))
         {
-            throw new LiveWriteSafetyException($"{role}: {token} is niet exact OFF.");
+            throw new LiveWriteSafetyException($"{role}: {token} is not exactly OFF.");
         }
     }
 
@@ -1234,7 +1234,7 @@ internal static class Channel40Preflight
         };
         if (!disabled)
         {
-            throw new LiveWriteSafetyException($"{role}: {token} is niet uitgeschakeld.");
+            throw new LiveWriteSafetyException($"{role}: {token} is not disabled.");
         }
     }
 
@@ -1275,7 +1275,7 @@ internal static class Channel40Preflight
         if (!inaudible)
         {
             throw new LiveWriteSafetyException(
-                $"{role}: CH{channel}-fader staat niet aantoonbaar op -inf.");
+                $"{role}: CH{channel} fader is not demonstrably at -inf.");
         }
     }
 
@@ -1284,7 +1284,7 @@ internal static class Channel40Preflight
         if (channel is < 1 or > 40)
         {
             throw new LiveWriteSafetyException(
-                $"Ongeldig inputkanaal {channel}; alleen CH1..CH40 zijn toegestaan.");
+                $"Invalid input channel {channel}; only CH1..CH40 are allowed.");
         }
     }
 
@@ -1458,7 +1458,7 @@ internal sealed class GuardedLiveSession : IWingSession
             throw new ArgumentOutOfRangeException(
                 nameof(allowedChannel),
                 allowedChannel,
-                "Het live-writekanaal moet tussen 1 en 40 liggen.");
+                "The live-write channel must be between 1 and 40.");
         }
 
         this.inner = inner;
@@ -1583,7 +1583,7 @@ internal sealed class GuardedOscStimulus : IDisposable
             WingValueType.I => ",i",
             WingValueType.F => ",f",
             WingValueType.S => ",s",
-            _ => throw new LiveWriteSafetyException("Niet-ondersteund OSC-testwaardetype."),
+            _ => throw new LiveWriteSafetyException("Unsupported OSC test value type."),
         };
         WriteOscString(stream, typeTag);
         Span<byte> scalar = stackalloc byte[sizeof(int)];
@@ -1603,7 +1603,7 @@ internal sealed class GuardedOscStimulus : IDisposable
                 if (value.AsString().Contains('\0'))
                 {
                     throw new LiveWriteSafetyException(
-                        "OSC-teststring mag geen NUL-teken bevatten.");
+                        "OSC test string may not contain a NUL character.");
                 }
 
                 WriteOscString(stream, value.AsString());
@@ -1636,7 +1636,7 @@ internal static class LiveWriteTokenGuard
         if (allowedChannel is < 1 or > 40)
         {
             throw new LiveWriteSafetyException(
-                $"Ongeldig live-writekanaal {allowedChannel}; alleen CH1..CH40 is toegestaan.");
+                $"Invalid live-write channel {allowedChannel}; only CH1..CH40 is allowed.");
         }
 
         var allowedChannelPrefix = $"/ch/{allowedChannel}/";
@@ -1645,7 +1645,7 @@ internal static class LiveWriteTokenGuard
             !normalized.StartsWith(allowedChannelPrefix, StringComparison.Ordinal))
         {
             throw new LiveWriteSafetyException(
-                $"Live-writeguard blokkeerde niet-goedgekeurd token {normalized}.");
+                $"Live write guard blocked non-approved token {normalized}.");
         }
 
         var segments = normalized.Split('/', StringSplitOptions.RemoveEmptyEntries);

@@ -85,7 +85,7 @@ internal static class SupportBundleTests
             ["level"] = "Error",
             ["eventName"] = "READBACK_MISMATCH",
             ["message"] =
-                $"Console serial '{fohSerial}' op {fohIp}: verwacht {parameterValue}.",
+                $"Console serial '{fohSerial}' at {fohIp}: expected {parameterValue}.",
             ["properties"] = new JsonObject
             {
                 ["actualSerial"] = fohSerial,
@@ -99,7 +99,7 @@ internal static class SupportBundleTests
             ["timestamp"] = "2026-07-26T10:00:03+00:00",
             ["level"] = "Error",
             ["eventName"] = "CACHE_LOCATION_NOTE",
-            ["message"] = $"Kon {privateProfilePath} niet openen.",
+            ["message"] = $"Could not open {privateProfilePath}.",
         };
         var ordinaryPathLog = new JsonObject
         {
@@ -107,7 +107,7 @@ internal static class SupportBundleTests
             ["level"] = "Warning",
             ["eventName"] = "CACHE_RECOVERY_DEFERRED",
             ["message"] =
-                $"Cachebestand {privateDrivePath} kon niet worden gelezen; retry blijft beschikbaar.",
+                $"Cache file {privateDrivePath} could not be read; retry remains available.",
         };
         var identityMismatchLog = new JsonObject
         {
@@ -115,14 +115,14 @@ internal static class SupportBundleTests
             ["level"] = "Critical",
             ["eventName"] = "CONNECTED_IDENTITY_MISMATCH",
             ["message"] =
-                $"Identity pin {fohSerial} stemt niet overeen; verbonden serienummer {observedUnknownSerial}.",
+                $"Identity pin {fohSerial} does not match; connected serial number {observedUnknownSerial}.",
         };
         var secondaryBatchFailureLog = new JsonObject
         {
             ["timestamp"] = "2026-07-26T10:00:06+00:00",
             ["level"] = "Critical",
             ["eventName"] = "SYNC_BATCH_FAILED",
-            ["message"] = "Readback wijkt af: verwacht OFF, ontvangen ON.",
+            ["message"] = "Readback differs: expected OFF, received ON.",
         };
         await File.WriteAllLinesAsync(
                 Path.Combine(logDirectory, "wingsync.jsonl"),
@@ -144,7 +144,7 @@ internal static class SupportBundleTests
                     logDirectory,
                     "WingSync 1.2.3-test",
                     "RunningLive",
-                    $"Herstelbron {privateUncPath} is onbereikbaar; synchronisatie gepauzeerd.",
+                    $"Recovery source {privateUncPath} is unreachable; synchronization paused.",
                     2))
             .ConfigureAwait(false);
 
@@ -169,8 +169,8 @@ internal static class SupportBundleTests
         AssertNotContains(allExportedText, "Secret Show");
         AssertNotContains(allExportedText, "FOH-SERVER");
         AssertNotContains(allExportedText, "Client X");
-        AssertNotContains(logsText, "verwacht OFF");
-        AssertNotContains(logsText, "ontvangen ON");
+        AssertNotContains(logsText, "expected OFF");
+        AssertNotContains(logsText, "received ON");
         AssertEx.True(
             configText.Contains("\"schemaVersion\": 1", StringComparison.Ordinal),
             "The redacted configuration lost its schema structure.");
@@ -196,17 +196,17 @@ internal static class SupportBundleTests
             "The structured WING parameter value was not explicitly redacted.");
         AssertEx.True(
             logsText.Contains(
-                "Cachebestand [REDACTED:PATH] kon niet worden gelezen; retry blijft beschikbaar.",
+                "Cache file [REDACTED:PATH] could not be read; retry remains available.",
                 StringComparison.Ordinal),
             "An ordinary log path was not redacted while preserving its diagnostic context.");
         AssertEx.True(
             logsText.Contains(
-                "Kon [REDACTED:PATH] niet openen.",
+                "Could not open [REDACTED:PATH].",
                 StringComparison.Ordinal),
             "A user-profile path containing spaces was not fully redacted.");
         AssertEx.True(
             logsText.Contains(
-                "verbonden serienummer [REDACTED:SERIAL]",
+                "connected serial number [REDACTED:SERIAL]",
                 StringComparison.Ordinal),
             "An observed serial in Dutch identity-mismatch text was not redacted.");
         AssertEx.True(
@@ -214,16 +214,16 @@ internal static class SupportBundleTests
                 "\"eventName\":\"SYNC_BATCH_FAILED\"",
                 StringComparison.Ordinal) &&
             logsText.Contains(
-                "Ruwe helper- of parameterinhoud is verwijderd uit het supportpakket.",
+                "Raw helper or parameter content was removed from the support bundle.",
                 StringComparison.Ordinal),
             "A secondary sync failure retained its raw short parameter values.");
         AssertEx.True(
             diagnosticsText.Contains("Dropped log entries: 2", StringComparison.Ordinal) &&
             diagnosticsText.Contains("Data directory: [OMITTED]", StringComparison.Ordinal) &&
             diagnosticsText.Contains(
-                "Herstelbron [REDACTED:PATH] is onbereikbaar; synchronisatie gepauzeerd.",
+                "Recovery source [REDACTED:PATH] is unreachable; synchronization paused.",
                 StringComparison.Ordinal) &&
-            diagnosticsText.Contains("bestandslocaties", StringComparison.Ordinal),
+            diagnosticsText.Contains("file locations", StringComparison.Ordinal),
             "The safe diagnostic summary is incomplete.");
     }
 
@@ -253,7 +253,7 @@ internal static class SupportBundleTests
                     logDirectory,
                     "WingSync test",
                     "Faulted",
-                    "Diagnose beschikbaar.",
+                    "Diagnostic available.",
                     0))
             .ConfigureAwait(false);
 

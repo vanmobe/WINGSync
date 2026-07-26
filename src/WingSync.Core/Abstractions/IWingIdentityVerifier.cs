@@ -39,7 +39,7 @@ public sealed class StaticWingIdentityVerifier : IWingIdentityVerifier
         cancellationToken.ThrowIfCancellationRequested();
         if (!identities.TryGetValue(endpoint.IpAddress, out var identity))
         {
-            throw new InvalidOperationException($"Geen WING-identiteit voor {endpoint.IpAddress}.");
+            throw new InvalidOperationException($"No WING identity for {endpoint.IpAddress}.");
         }
 
         var issues = ConfigValidator.ValidateDiscoveredIdentity(endpoint, identity, nameof(endpoint));

@@ -189,7 +189,7 @@ public sealed class SyncCoordinator : IAsyncDisposable
         this.clock = clock ?? new SystemClock();
         status = new SyncCoordinatorStatus(
             SyncCoordinatorState.Stopped,
-            "Niet gestart.",
+            "Not started.",
             this.clock.UtcNow);
     }
 
@@ -233,7 +233,7 @@ public sealed class SyncCoordinator : IAsyncDisposable
             await StopInternalAsync(CancellationToken.None).ConfigureAwait(false);
             ThrowIfStopRequested(
                 startStopFence,
-                "Een stopverzoek onderbrak het starten voordat consoles werden geopend.");
+                "A stop request interrupted startup before consoles were opened.");
             var validation = ConfigValidator.Validate(configuration);
             if (!validation.IsValid)
             {
@@ -254,14 +254,14 @@ public sealed class SyncCoordinator : IAsyncDisposable
                 });
 
             fohSession = sessionFactory.Create("FOH");
-            monitorSession = sessionFactory.Create("Podium");
+            monitorSession = sessionFactory.Create("Stage");
             ConfigureRoles(configuration);
             SubscribeSessions();
             Interlocked.Increment(ref transportGeneration);
             await reconcileGate.WaitAsync(cancellationToken).ConfigureAwait(false);
             try
             {
-                ChangeStatus(SyncCoordinatorState.Connecting, "Consoles identificeren en verbinden.");
+                ChangeStatus(SyncCoordinatorState.Connecting, "Identifying and connecting consoles.");
 
                 await VerifyIdentitiesAsync(cancellationToken).ConfigureAwait(false);
                 await ConnectBothAsync(cancellationToken).ConfigureAwait(false);
@@ -269,16 +269,16 @@ public sealed class SyncCoordinator : IAsyncDisposable
                 await BeginCacheEpochAsync(cancellationToken).ConfigureAwait(false);
                 ThrowIfStopRequested(
                     startStopFence,
-                    "Een stopverzoek onderbrak het starten na de verbindingscontrole.");
+                    "A stop request interrupted startup after the connection check.");
 
-                ChangeStatus(SyncCoordinatorState.Snapshotting, "Verse scope-snapshots inlezen.");
+                ChangeStatus(SyncCoordinatorState.Snapshotting, "Reading fresh scope snapshots.");
                 var initialSnapshot = await BuildFreshPlanAsync(cancellationToken).ConfigureAwait(false);
                 var initialPlan = initialSnapshot.Plan;
                 pendingInitialPlan = initialPlan;
                 RecordPlanningFindings(initialPlan);
                 ThrowIfStopRequested(
                     startStopFence,
-                    "Een stopverzoek onderbrak het starten na de eerste snapshot.");
+                    "A stop request interrupted startup after the first snapshot.");
 
                 workerTask = ProcessWorkAsync(sessionCancellation.Token);
                 healthTask = HealthLoopAsync(sessionCancellation.Token);
@@ -290,7 +290,7 @@ public sealed class SyncCoordinator : IAsyncDisposable
                     await PreviewPlanAsync(initialPlan).ConfigureAwait(false);
                     ChangeStatus(
                         SyncCoordinatorState.AwaitingConfirmation,
-                        $"{initialPlan.ExecutableWrites.Count} initiële wijzigingen wachten op bevestiging.");
+                        $"{initialPlan.ExecutableWrites.Count} initial changes are waiting for confirmation.");
                     return;
                 }
 
@@ -302,7 +302,7 @@ public sealed class SyncCoordinator : IAsyncDisposable
                     await PreviewPlanAsync(initialPlan).ConfigureAwait(false);
                     ChangeStatus(
                         SyncCoordinatorState.AwaitingConfirmation,
-                        "De toestand wijzigde tijdens de eerste snapshot; controleer de verse diff.");
+                        "State changed during the first snapshot; review the fresh diff.");
                     return;
                 }
 
@@ -315,13 +315,13 @@ public sealed class SyncCoordinator : IAsyncDisposable
                 {
                     ThrowIfStopRequested(
                         startStopFence,
-                        "Een stopverzoek blokkeerde de initiële live-uitvoering.");
+                        "A stop request blocked the initial live execution.");
                     if (!configuration.Safety.DryRun &&
                         initialPlan.ExecutableWrites.Count > 0)
                     {
                         ChangeStatus(
                             SyncCoordinatorState.ApplyingLive,
-                            "Bevestigde liveverschillen worden geschreven en teruggelezen.");
+                            "Confirmed live differences are being written and read back.");
                     }
 
                     await ExecuteOrPreviewPlanAsync(
@@ -333,7 +333,7 @@ public sealed class SyncCoordinator : IAsyncDisposable
 
                 ThrowIfStopRequested(
                     startStopFence,
-                    "Een stopverzoek blokkeerde het activeren van de eventstroom.");
+                    "A stop request blocked activation of the event stream.");
                 pendingInitialPlan = null;
                 pendingInitialPreview = null;
                 EnableEventIntake(initialSnapshot);
@@ -342,8 +342,8 @@ public sealed class SyncCoordinator : IAsyncDisposable
                         ? SyncCoordinatorState.RunningDryRun
                         : SyncCoordinatorState.RunningLive,
                     configuration.Safety.DryRun
-                        ? "Droogloop actief; er worden geen writes verstuurd."
-                        : "Live synchronisatie actief; iedere write wordt geverifieerd.");
+                        ? "Dry run active; no writes are sent."
+                        : "Live synchronization active; every write is verified.");
             }
             finally
             {
@@ -358,7 +358,7 @@ public sealed class SyncCoordinator : IAsyncDisposable
         }
         catch
         {
-            ChangeStatus(SyncCoordinatorState.Faulted, "Starten is mislukt; er zijn geen writes actief.");
+            ChangeStatus(SyncCoordinatorState.Faulted, "Startup failed; no writes are active.");
             await StopInternalAsync(CancellationToken.None, preserveFaultedStatus: true).ConfigureAwait(false);
             throw;
         }
@@ -379,28 +379,28 @@ public sealed class SyncCoordinator : IAsyncDisposable
         {
             ThrowIfStopRequested(
                 confirmationStopFence,
-                "Een stopverzoek blokkeerde de livebevestiging.");
+                "A stop request blocked live confirmation.");
             await reconcileGate.WaitAsync(cancellationToken).ConfigureAwait(false);
             reconcileEntered = true;
             ThrowIfStopRequested(
                 confirmationStopFence,
-                "Een stopverzoek blokkeerde de livebevestiging.");
+                "A stop request blocked live confirmation.");
             if (Status.State != SyncCoordinatorState.AwaitingConfirmation ||
                 pendingInitialPlan is null ||
                 configuration is null)
             {
-                throw new InvalidOperationException("Er wacht geen initiële synchronisatie op bevestiging.");
+                throw new InvalidOperationException("No initial synchronization is waiting for confirmation.");
             }
 
             ChangeStatus(
                 SyncCoordinatorState.Snapshotting,
-                "Na bevestiging beide consoles opnieuw inlezen.");
+                "After confirmation, reread both consoles.");
             var freshSnapshot = await BuildFreshPlanAsync(cancellationToken).ConfigureAwait(false);
             var freshPlan = freshSnapshot.Plan;
             RecordPlanningFindings(freshPlan);
             ThrowIfStopRequested(
                 confirmationStopFence,
-                "Een stopverzoek onderbrak de verse livecontrole.");
+                "A stop request interrupted the fresh live check.");
             if (freshSnapshot.WasInvalidated ||
                 !PlansAreEquivalent(pendingInitialPlan, freshPlan) ||
                 !IsSnapshotCurrent(freshSnapshot))
@@ -418,13 +418,13 @@ public sealed class SyncCoordinator : IAsyncDisposable
                 await PreviewPlanAsync(freshPlan).ConfigureAwait(false);
                 ChangeStatus(
                     SyncCoordinatorState.AwaitingConfirmation,
-                    "De consoles wijzigden sinds de preview; controleer en bevestig de nieuwe diff.");
+                    "The consoles changed since the preview; review and confirm the new diff.");
                 throw new InitialSyncPreviewChangedException(pendingInitialPreview);
             }
 
             ThrowIfStopRequested(
                 confirmationStopFence,
-                "Een stopverzoek blokkeerde het inschakelen van live writes.");
+                "A stop request blocked enabling live writes.");
             liveWritesArmed = true;
             if (!IsSnapshotCurrent(freshSnapshot))
             {
@@ -437,7 +437,7 @@ public sealed class SyncCoordinator : IAsyncDisposable
                 await PreviewPlanAsync(freshPlan).ConfigureAwait(false);
                 ChangeStatus(
                     SyncCoordinatorState.AwaitingConfirmation,
-                    "De consoles wijzigden vlak voor uitvoering; controleer de nieuwe diff.");
+                    "The consoles changed right before execution; review the new diff.");
                 throw new InitialSyncPreviewChangedException(pendingInitialPreview);
             }
 
@@ -449,12 +449,12 @@ public sealed class SyncCoordinator : IAsyncDisposable
             {
                 ThrowIfStopRequested(
                     confirmationStopFence,
-                    "Een stopverzoek blokkeerde de initiële live-uitvoering.");
+                    "A stop request blocked the initial live execution.");
                 if (freshPlan.ExecutableWrites.Count > 0)
                 {
                     ChangeStatus(
                         SyncCoordinatorState.ApplyingLive,
-                        "Bevestigde liveverschillen worden geschreven en teruggelezen.");
+                        "Confirmed live differences are being written and read back.");
                 }
 
                 await ExecutePlanAsync(
@@ -466,13 +466,13 @@ public sealed class SyncCoordinator : IAsyncDisposable
 
             ThrowIfStopRequested(
                 confirmationStopFence,
-                "Een stopverzoek blokkeerde het activeren van de eventstroom.");
+                "A stop request blocked activation of the event stream.");
             pendingInitialPlan = null;
             pendingInitialPreview = null;
             EnableEventIntake(freshSnapshot);
             ChangeStatus(
                 SyncCoordinatorState.RunningLive,
-                "Live synchronisatie actief; iedere write wordt geverifieerd.");
+                "Live synchronization active; every write is verified.");
         }
         catch (ReconciliationInterruptedException) when (
             StopWasRequested(confirmationStopFence))
@@ -507,7 +507,7 @@ public sealed class SyncCoordinator : IAsyncDisposable
             {
                 ChangeStatus(
                     SyncCoordinatorState.AwaitingConfirmation,
-                    "Live bevestiging werd geannuleerd; er zijn geen writes actief.");
+                    "Live confirmation was canceled; no writes are active.");
             }
 
             throw;
@@ -518,12 +518,12 @@ public sealed class SyncCoordinator : IAsyncDisposable
             SuspendEventIntake();
             ChangeStatus(
                 SyncCoordinatorState.AwaitingConfirmation,
-                "De verse controle mislukte; er zijn geen writes actief. Probeer opnieuw.");
+                "The fresh check failed; no writes are active. Try again.");
             Record(
                 DiagnosticSeverity.Error,
                 "INITIAL_CONFIRM_FAILED",
                 exception.Message,
-                "Synchronisatie");
+                "Synchronization");
             throw;
         }
         finally
@@ -558,7 +558,7 @@ public sealed class SyncCoordinator : IAsyncDisposable
                 DiagnosticSeverity.Error,
                 "INITIAL_PREVIEW_REFRESH_FAILED",
                 refreshException.Message,
-                "Synchronisatie");
+                "Synchronization");
         }
 
         pendingInitialPreview ??= CreatePreviewSummary(
@@ -566,7 +566,7 @@ public sealed class SyncCoordinator : IAsyncDisposable
             new WritePlan([], [], 0));
         ChangeStatus(
             SyncCoordinatorState.AwaitingConfirmation,
-            $"{reason} Controleer de nieuwe preview zodra beide consoles stabiel zijn.");
+            $"{reason} Review the new preview once both consoles are stable.");
         return pendingInitialPreview;
     }
 
@@ -617,7 +617,7 @@ public sealed class SyncCoordinator : IAsyncDisposable
     {
         if (fohSession is null || monitorSession is null)
         {
-            throw new InvalidOperationException("Sessies zijn nog niet gemaakt.");
+            throw new InvalidOperationException("Sessions have not been created yet.");
         }
 
         switch (currentConfiguration.Direction)
@@ -632,7 +632,7 @@ public sealed class SyncCoordinator : IAsyncDisposable
                 break;
             default:
                 throw new InvalidOperationException(
-                    "Alleen een expliciete eenrichtingssynchronisatie kan worden gestart.");
+                    "Only an explicit one-way synchronization can be started.");
         }
     }
 
@@ -667,7 +667,7 @@ public sealed class SyncCoordinator : IAsyncDisposable
     private async Task VerifyIdentitiesAsync(CancellationToken cancellationToken)
     {
         var currentConfiguration = configuration ??
-            throw new InvalidOperationException("Configuratie ontbreekt.");
+            throw new InvalidOperationException("Configuration is missing.");
         var fohTask = identityVerifier.VerifyAsync(currentConfiguration.Foh, cancellationToken);
         var monitorTask = identityVerifier.VerifyAsync(currentConfiguration.Monitor, cancellationToken);
         await Task.WhenAll(fohTask, monitorTask).ConfigureAwait(false);
@@ -678,16 +678,16 @@ public sealed class SyncCoordinator : IAsyncDisposable
                 monitorIdentity.SerialNumber,
                 StringComparison.OrdinalIgnoreCase))
         {
-            throw new InvalidOperationException("FOH en podium verwijzen naar dezelfde fysieke console.");
+            throw new InvalidOperationException("FOH and stage refer to the same physical console.");
         }
     }
 
     private async Task ConnectBothAsync(CancellationToken cancellationToken)
     {
         var currentConfiguration = configuration ??
-            throw new InvalidOperationException("Configuratie ontbreekt.");
-        var currentFoh = fohSession ?? throw new InvalidOperationException("FOH-sessie ontbreekt.");
-        var currentMonitor = monitorSession ?? throw new InvalidOperationException("Podiumsessie ontbreekt.");
+            throw new InvalidOperationException("Configuration is missing.");
+        var currentFoh = fohSession ?? throw new InvalidOperationException("FOH session is missing.");
+        var currentMonitor = monitorSession ?? throw new InvalidOperationException("Stage session is missing.");
         await Task.WhenAll(
                 currentFoh.ConnectAsync(currentConfiguration.Foh, cancellationToken),
                 currentMonitor.ConnectAsync(currentConfiguration.Monitor, cancellationToken))
@@ -697,14 +697,14 @@ public sealed class SyncCoordinator : IAsyncDisposable
     private async Task VerifyConnectedIdentitiesAsync(CancellationToken cancellationToken)
     {
         var currentConfiguration = configuration ??
-            throw new InvalidOperationException("Configuratie ontbreekt.");
-        var currentFoh = fohSession ?? throw new InvalidOperationException("FOH-sessie ontbreekt.");
+            throw new InvalidOperationException("Configuration is missing.");
+        var currentFoh = fohSession ?? throw new InvalidOperationException("FOH session is missing.");
         var currentMonitor = monitorSession ??
-            throw new InvalidOperationException("Podiumsessie ontbreekt.");
+            throw new InvalidOperationException("Stage session is missing.");
         var discoveredFoh = fohIdentity ??
-            throw new InvalidOperationException("FOH-identiteit ontbreekt.");
+            throw new InvalidOperationException("FOH identity is missing.");
         var discoveredMonitor = monitorIdentity ??
-            throw new InvalidOperationException("Podiumidentiteit ontbreekt.");
+            throw new InvalidOperationException("Stage identity is missing.");
 
         var fohTask = VerifyConnectedIdentityAsync(
             "FOH",
@@ -713,7 +713,7 @@ public sealed class SyncCoordinator : IAsyncDisposable
             discoveredFoh,
             cancellationToken);
         var monitorTask = VerifyConnectedIdentityAsync(
-            "Podium",
+            "Stage",
             currentMonitor,
             currentConfiguration.Monitor,
             discoveredMonitor,
@@ -747,11 +747,11 @@ public sealed class SyncCoordinator : IAsyncDisposable
                 StringComparison.OrdinalIgnoreCase))
         {
             var shownObserved = string.IsNullOrWhiteSpace(observedSerial)
-                ? "ontbreekt/ongeldig"
+                ? "missing/invalid"
                 : observedSerial;
             var message =
-                $"{role}: verbonden WAPI-console meldt serienummer '{shownObserved}', " +
-                $"maar pin/discovery verwachten '{pinnedSerial}'. Writes blijven geblokkeerd.";
+                $"{role}: connected WAPI console reports serial number '{shownObserved}', " +
+                $"but pin/discovery expect '{pinnedSerial}'. Writes remain blocked.";
             PauseForSafety("CONNECTED_IDENTITY_MISMATCH", message);
             throw new ConnectedIdentityMismatchException(message);
         }
@@ -769,12 +769,12 @@ public sealed class SyncCoordinator : IAsyncDisposable
             acceptEvents = false;
         }
 
-        var currentFohIdentity = fohIdentity ?? throw new InvalidOperationException("FOH-identiteit ontbreekt.");
+        var currentFohIdentity = fohIdentity ?? throw new InvalidOperationException("FOH identity is missing.");
         var currentMonitorIdentity = monitorIdentity ??
-            throw new InvalidOperationException("Podiumidentiteit ontbreekt.");
+            throw new InvalidOperationException("Stage identity is missing.");
         await Task.WhenAll(
                 stateSink.BeginEpochAsync("FOH", currentFohIdentity, epoch, cancellationToken),
-                stateSink.BeginEpochAsync("Podium", currentMonitorIdentity, epoch, cancellationToken))
+                stateSink.BeginEpochAsync("Stage", currentMonitorIdentity, epoch, cancellationToken))
             .ConfigureAwait(false);
     }
 
@@ -800,20 +800,20 @@ public sealed class SyncCoordinator : IAsyncDisposable
             Record(
                 DiagnosticSeverity.Warning,
                 "SNAPSHOT_INVALIDATED",
-                $"Snapshotpoging {attempt} werd ongeldig door een gelijktijdige consolewijziging; beide toestanden worden opnieuw ingelezen.",
-                "Synchronisatie");
+                $"Snapshot attempt {attempt} was invalidated by a simultaneous console change; both states are being reread.",
+                "Synchronization");
         }
 
         throw new SnapshotUnstableException(
-            "De consoles wijzigden tijdens iedere snapshotpoging; live writes blijven geblokkeerd.");
+            "The consoles changed during every snapshot attempt; live writes remain blocked.");
     }
 
     private async Task<WritePlan> ReadFreshPlanAttemptAsync(CancellationToken cancellationToken)
     {
         var currentConfiguration = configuration ??
-            throw new InvalidOperationException("Configuratie ontbreekt.");
-        var currentSource = sourceSession ?? throw new InvalidOperationException("Bronsessie ontbreekt.");
-        var currentTarget = targetSession ?? throw new InvalidOperationException("Doelsessie ontbreekt.");
+            throw new InvalidOperationException("Configuration is missing.");
+        var currentSource = sourceSession ?? throw new InvalidOperationException("Source session is missing.");
+        var currentTarget = targetSession ?? throw new InvalidOperationException("Target session is missing.");
 
         sourceState.Clear();
         targetState.Clear();
@@ -932,8 +932,8 @@ public sealed class SyncCoordinator : IAsyncDisposable
         }
 
         throw new SnapshotUnstableException(
-            "Een console bleef wijzigen tijdens dubbele node- en scalarreads; " +
-            "er zijn geen writes verstuurd.");
+            "A console kept changing during duplicate node and scalar reads; " +
+            "no writes were sent.");
     }
 
     private async Task<StableNodePass>
@@ -1015,19 +1015,19 @@ public sealed class SyncCoordinator : IAsyncDisposable
         IReadOnlyList<WingParameter> targetSnapshot,
         CancellationToken cancellationToken)
     {
-        var currentFohIdentity = fohIdentity ?? throw new InvalidOperationException("FOH-identiteit ontbreekt.");
+        var currentFohIdentity = fohIdentity ?? throw new InvalidOperationException("FOH identity is missing.");
         var currentMonitorIdentity = monitorIdentity ??
-            throw new InvalidOperationException("Podiumidentiteit ontbreekt.");
+            throw new InvalidOperationException("Stage identity is missing.");
         var sourceIsFoh = ReferenceEquals(sourceSession, fohSession);
         await Task.WhenAll(
                 stateSink.StoreAsync(
-                    sourceIsFoh ? "FOH" : "Podium",
+                    sourceIsFoh ? "FOH" : "Stage",
                     sourceIsFoh ? currentFohIdentity : currentMonitorIdentity,
                     activeEpoch,
                     sourceSnapshot,
                     cancellationToken),
                 stateSink.StoreAsync(
-                    sourceIsFoh ? "Podium" : "FOH",
+                    sourceIsFoh ? "Stage" : "FOH",
                     sourceIsFoh ? currentMonitorIdentity : currentFohIdentity,
                     activeEpoch,
                     targetSnapshot,
@@ -1038,7 +1038,7 @@ public sealed class SyncCoordinator : IAsyncDisposable
     private WritePlan FilterUnchangedWrites(WritePlan completePlan)
     {
         var currentConfiguration = configuration ??
-            throw new InvalidOperationException("Configuratie ontbreekt.");
+            throw new InvalidOperationException("Configuration is missing.");
         var guardedDifferenceGroups = completePlan.Writes
             .Where(write =>
                 IsGuardedMutationPath(write.TargetPath) &&
@@ -1091,7 +1091,7 @@ public sealed class SyncCoordinator : IAsyncDisposable
         FreshPlanSnapshot? executionSnapshot = null)
     {
         var currentConfiguration = configuration ??
-            throw new InvalidOperationException("Configuratie ontbreekt.");
+            throw new InvalidOperationException("Configuration is missing.");
         if (currentConfiguration.Safety.DryRun)
         {
             await PreviewPlanAsync(plan).ConfigureAwait(false);
@@ -1151,7 +1151,7 @@ public sealed class SyncCoordinator : IAsyncDisposable
         bool requireActiveEventIntake = false,
         FreshPlanSnapshot? executionSnapshot = null)
     {
-        var currentTarget = targetSession ?? throw new InvalidOperationException("Doelsessie ontbreekt.");
+        var currentTarget = targetSession ?? throw new InvalidOperationException("Target session is missing.");
         var executable = plan.ExecutableWrites.ToArray();
 
         foreach (var blocked in plan.Writes.Where(static write =>
@@ -1187,7 +1187,7 @@ public sealed class SyncCoordinator : IAsyncDisposable
         }
 
         ThrowIfStopRequested(
-            "Een stopverzoek blokkeerde de plancontrole vóór nieuwe writes.");
+            "A stop request blocked plan validation before new writes.");
         var units = BuildExecutionUnits(executable);
         var preflightTransportGeneration = Interlocked.Read(ref transportGeneration);
         var executionFence = GetEventSequences();
@@ -1199,15 +1199,15 @@ public sealed class SyncCoordinator : IAsyncDisposable
                 cancellationToken)
             .ConfigureAwait(false);
         ThrowIfStopRequested(
-            "Een stopverzoek blokkeerde de uitvoering na de plancontrole.");
+            "A stop request blocked execution after plan validation.");
 
         foreach (var unit in units)
         {
             ThrowIfStopRequested(
-                "Een stopverzoek blokkeerde de volgende transactie-eenheid.");
+                "A stop request blocked the next transaction unit.");
             ThrowIfEventFenceChanged(
                 executionFence,
-                "De bron- of doelconsole wijzigde na de plancontrole; het plan wordt opnieuw opgebouwd.");
+                "The source or target console changed after plan validation; the plan is being rebuilt.");
             var guardedMutation = unit.Writes.Any(static write =>
                 IsGuardedMutationPath(write.TargetPath));
             var protectiveWrites = unit.Writes
@@ -1234,8 +1234,8 @@ public sealed class SyncCoordinator : IAsyncDisposable
             if (protectiveWrites.Length == 0)
             {
                 throw new IOException(
-                    $"Processorgroep {unit.TransactionGroup} bevat een model-/delaymutatie " +
-                    "zonder een eenduidige veilige enablewaarde; er zijn geen writes verstuurd.");
+                    $"Processor group {unit.TransactionGroup} contains a model/delay mutation " +
+                    "without an unambiguous safe enable value; no writes were sent.");
             }
 
             // Capture and protect exactly one physical processor group at a time.
@@ -1245,7 +1245,7 @@ public sealed class SyncCoordinator : IAsyncDisposable
             if (!IsTargetTransportCurrent(currentTarget, guardTransportGeneration))
             {
                 throw new ReconciliationInterruptedException(
-                    "De doeltransportsessie wijzigde vóór het lezen van de safetyguards.");
+                    "The target transport session changed before reading the safety guards.");
             }
 
             var originals = await CaptureSafetyGuardOriginalsAsync(
@@ -1260,7 +1260,7 @@ public sealed class SyncCoordinator : IAsyncDisposable
                     unit.Writes.First(static write =>
                         IsGuardedMutationPath(write.SourcePath)).SourcePath) ??
                     throw new IOException(
-                        "De bronprocessorgroep voor de safetytransactie kon niet worden bepaald."),
+                        "The source processor group for the safety transaction could not be determined."),
                 originals,
                 new ReadOnlyDictionary<string, PlannedWrite>(
                     protectiveWrites.ToDictionary(
@@ -1296,7 +1296,7 @@ public sealed class SyncCoordinator : IAsyncDisposable
                 if (context.ActivePaths.Count > 0)
                 {
                     throw new InvalidOperationException(
-                        "Een safetyguard had geen geverifieerde eindtoestand in zijn processorgroep.");
+                        "A safety guard had no verified end state in its processor group.");
                 }
             }
             catch (Exception exception) when (context.ActivePaths.Count > 0)
@@ -1337,10 +1337,10 @@ public sealed class SyncCoordinator : IAsyncDisposable
             var batch = executionBatch.Writes;
             cancellationToken.ThrowIfCancellationRequested();
             ThrowIfStopRequested(
-                "Een stopverzoek blokkeerde de volgende writebatch.");
+                "A stop request blocked the next write batch.");
             ThrowIfEventFenceChanged(
                 executionFence,
-                "De bron- of doelconsole wijzigde vóór de volgende transactiefase.");
+                "The source or target console changed before the next transaction phase.");
             ThrowIfSafetyTransactionInterfered(guardContext);
             var batchTransportGeneration = Interlocked.Read(ref transportGeneration);
             if (!IsTargetTransportCurrent(currentTarget, batchTransportGeneration) ||
@@ -1348,20 +1348,20 @@ public sealed class SyncCoordinator : IAsyncDisposable
                  guardContext.TransportGeneration != batchTransportGeneration))
             {
                 throw new ReconciliationInterruptedException(
-                    "De doeltransportsessie wijzigde vóór de volgende batch.");
+                    "The target transport session changed before the next batch.");
             }
 
             if (requireActiveEventIntake && !acceptEvents)
             {
                 throw new ReconciliationInterruptedException(
-                    "De live batch werd vóór de volgende write onderbroken voor een reconnect.");
+                    "The live batch was interrupted before the next write for a reconnect.");
             }
 
             if (executionSnapshot is not null &&
                 !IsSnapshotCurrent(executionSnapshot))
             {
                 throw new SnapshotChangedBeforeWriteException(
-                    "De consoles of transportsessie wijzigden vóór de write; het plan is niet uitgevoerd.");
+                    "The consoles or transport session changed before the write; the plan was not executed.");
             }
 
             var stopwatch = Stopwatch.StartNew();
@@ -1410,13 +1410,13 @@ public sealed class SyncCoordinator : IAsyncDisposable
                     !IsSnapshotCurrent(executionSnapshot))
                 {
                     throw new SnapshotChangedBeforeWriteException(
-                        "De consoles of transportsessie wijzigden vlak vóór dispatch; het plan is niet uitgevoerd.");
+                        "The consoles or transport session changed right before dispatch; the plan was not executed.");
                 }
 
                 if (!AreTransportSessionsConnected())
                 {
                     throw new ReconciliationInterruptedException(
-                        "Een consolesessie was vlak voor dispatch niet meer verbonden.");
+                        "A console session was no longer connected right before dispatch.");
                 }
 
                 if (guardContext is not null)
@@ -1436,7 +1436,7 @@ public sealed class SyncCoordinator : IAsyncDisposable
                         if (guardContext.ActivePaths.Count != guardContext.Guards.Count)
                         {
                             throw new IOException(
-                                "Niet alle safetyguards waren actief vóór de processorwrite.");
+                                "Not all safety guards were active before the processor write.");
                         }
 
                         // A model or parameter batch may be partially applied even if
@@ -1454,10 +1454,10 @@ public sealed class SyncCoordinator : IAsyncDisposable
 
                 ThrowIfEventFenceChanged(
                     executionFence,
-                    "De bron- of doelconsole wijzigde vlak vóór de mutation-dispatch.");
+                    "The source or target console changed right before mutation dispatch.");
                 ThrowIfSafetyTransactionInterfered(guardContext);
                 ThrowIfStopRequested(
-                    "Een stopverzoek blokkeerde de writebatch vóór dispatch.");
+                    "A stop request blocked the write batch before dispatch.");
                 var dispatchWrites = batch
                     .Select(static write =>
                         new WingWriteRequest(write.TargetPath.ToString(), write.Value))
@@ -1471,7 +1471,7 @@ public sealed class SyncCoordinator : IAsyncDisposable
                     !AreTransportSessionsConnected())
                 {
                     throw new ReconciliationInterruptedException(
-                        "De transportsessie wijzigde tijdens de write; een verse snapshot is vereist.");
+                        "The transport session changed during the write; a fresh snapshot is required.");
                 }
 
                 await VerifyBatchAsync(batch, waiters, cancellationToken).ConfigureAwait(false);
@@ -1486,7 +1486,7 @@ public sealed class SyncCoordinator : IAsyncDisposable
                 ThrowIfSafetyTransactionInterfered(guardContext);
                 ThrowIfEventFenceChanged(
                     executionFence,
-                    "De bron- of doelconsole wijzigde tijdens de mutation-verificatie.");
+                    "The source or target console changed during mutation verification.");
 
                 var lastMutationBatch =
                     executionBatch.Phase is 1 or 2 &&
@@ -1539,8 +1539,8 @@ public sealed class SyncCoordinator : IAsyncDisposable
                     !IsTargetTransportCurrent(currentTarget, batchTransportGeneration))
                 {
                     throw new ReconciliationInterruptedException(
-                        "De transportsessie wijzigde tijdens de writeverificatie; " +
-                        "de batch wordt niet als voltooid beschouwd.");
+                        "The transport session changed during write verification; " +
+                        "the batch is not considered complete.");
                 }
 
                 if (guardContext is not null)
@@ -1616,8 +1616,8 @@ public sealed class SyncCoordinator : IAsyncDisposable
         if (!IsTargetTransportCurrent(target, context.TransportGeneration))
         {
             throw new IOException(
-                "Een safetyguard wijzigde tijdens de processorwrite en de transportsessie " +
-                "is niet meer veilig beschikbaar.");
+                "A safety guard changed during the processor write and the transport session " +
+                "is no longer safely available.");
         }
 
         await target.SetManyAsync(safeWrites, timeout.Token).ConfigureAwait(false);
@@ -1646,12 +1646,12 @@ public sealed class SyncCoordinator : IAsyncDisposable
             "SAFETY_GUARD_DRIFT_DURING_MUTATION",
             reasserted
                 ? "Een externe targetwijziging activeerde een processor tijdens de mutatie; " +
-                  "de veilige guard is opnieuw uitgestuurd en blijft actief voor handmatige controle."
-                : "Een externe targetwijziging activeerde een processor tijdens de mutatie en " +
-                  "de veilige guard kon niet bevestigd worden.",
-            "Veiligheid");
+                  "the safe guard was resent and remains active for manual review."
+                : "An external target change activated a processor during the mutation and " +
+                  "the safe guard could not be confirmed.",
+            "Safety");
         throw new IOException(
-            "Een safetyguard wijzigde tijdens de processorwrite; verdere writes zijn geblokkeerd.");
+            "A safety guard changed during the processor write; further writes are blocked.");
     }
 
     private async Task ReassertSafetyGuardsBeforeMutationAsync(
@@ -1666,17 +1666,17 @@ public sealed class SyncCoordinator : IAsyncDisposable
         ThrowIfSafetyTransactionInterfered(context);
         ThrowIfEventFenceChanged(
             executionFence,
-            "De bron- of doelconsole wijzigde vóór het opnieuw activeren van de safetyguards.");
+            "The source or target console changed before reactivating the safety guards.");
         if ((requireActiveEventIntake && !acceptEvents) ||
             (executionSnapshot is not null && !IsSnapshotCurrent(executionSnapshot)) ||
             !IsTargetTransportCurrent(target, context.TransportGeneration))
         {
             throw new ReconciliationInterruptedException(
-                "De transportsessie wijzigde vóór de safetyguard-herbevestiging.");
+                "The transport session changed before safety-guard reconfirmation.");
         }
 
         var currentSafety = configuration?.Safety ??
-            throw new InvalidOperationException("Safetyconfiguratie ontbreekt.");
+            throw new InvalidOperationException("Safety configuration is missing.");
         foreach (var guard in guards)
         {
             var echo = EchoFingerprint.Create(
@@ -1698,7 +1698,7 @@ public sealed class SyncCoordinator : IAsyncDisposable
         try
         {
             ThrowIfStopRequested(
-                "Een stopverzoek blokkeerde het opnieuw activeren van de safetyguards.");
+                "A stop request blocked reactivation of the safety guards.");
             await target.SetManyAsync(
                     guards
                         .Select(static guard =>
@@ -1709,12 +1709,12 @@ public sealed class SyncCoordinator : IAsyncDisposable
             ThrowIfSafetyTransactionInterfered(context);
             ThrowIfEventFenceChanged(
                 executionFence,
-                "De bron- of doelconsole wijzigde tijdens de safetyguard-herbevestiging.");
+                "The source or target console changed during safety-guard reconfirmation.");
             await VerifyActiveSafetyGuardsAsync(target, guards, context).ConfigureAwait(false);
             ThrowIfSafetyTransactionInterfered(context);
             ThrowIfEventFenceChanged(
                 executionFence,
-                "De bron- of doelconsole wijzigde na de exacte safetyguard-readback.");
+                "The source or target console changed after exact safety-guard readback.");
         }
         finally
         {
@@ -1748,7 +1748,7 @@ public sealed class SyncCoordinator : IAsyncDisposable
             ThrowIfSafetyTransactionInterfered(context);
             ThrowIfEventFenceChanged(
                 executionFence,
-                "De bron- of doelconsole wijzigde tijdens de volledige groepsreadback.");
+                "The source or target console changed during full group readback.");
             var actual = await ReadExactScalarAsync(
                     target,
                     write.TargetPath.ToString(),
@@ -1759,7 +1759,7 @@ public sealed class SyncCoordinator : IAsyncDisposable
             {
                 throw new IOException(
                     $"De processorgroep {context.TransactionGroup} wijkt na de mutation af op " +
-                    $"{write.TargetPath}; de safetyguard blijft actief.");
+                    $"{write.TargetPath}; the safety guard remains active.");
             }
 
             targetState[write.TargetPath.ToString()] = actual;
@@ -1779,7 +1779,7 @@ public sealed class SyncCoordinator : IAsyncDisposable
         ThrowIfSafetyTransactionInterfered(context);
         ThrowIfEventFenceChanged(
             executionFence,
-            "De bron- of doelconsole wijzigde na de volledige groepsreadback.");
+            "The source or target console changed after full group readback.");
     }
 
     private static void ThrowIfSafetyTransactionInterfered(
@@ -1790,7 +1790,7 @@ public sealed class SyncCoordinator : IAsyncDisposable
              Interlocked.Read(ref context.UnexpectedTargetRevision) != 0))
         {
             throw new IOException(
-                $"Een onverwachte bron- of doelwijziging raakte processorgroep " +
+                $"An unexpected source or target change affected processor group " +
                 $"{context.TransactionGroup}; de transactie is fail-closed gestopt.");
         }
     }
@@ -1811,9 +1811,9 @@ public sealed class SyncCoordinator : IAsyncDisposable
                 ", ",
                 context.ActivePaths.Order(StringComparer.Ordinal));
             var message =
-                $"Een gefaseerde processorwrite werd afgebroken nadat safetyguards actief " +
-                $"werden ({paths}). Laat de betrokken processor(en) uit, controleer de " +
-                "doelconsole handmatig en start daarna opnieuw via droogloop.";
+                $"A phased processor write was aborted after safety guards were active " +
+                $"({paths}). Leave the affected processor(s) off, verify the " +
+                "target console manually, then restart through dry run.";
             PauseForSafety("SAFETY_GUARD_RECOVERY_REQUIRED", message);
             throw new SafetyGuardRecoveryException(message, exception);
         }
@@ -1827,16 +1827,16 @@ public sealed class SyncCoordinator : IAsyncDisposable
                 : "SAFETY_GUARD_ROLLED_BACK",
             context.ProcessorMutationMayHaveStarted
                 ? "De processortransactie werd na een mutation afgebroken; alle betrokken " +
-                  "enablewaarden zijn opnieuw exact veilig gezet en blijven uit voor handmatige controle."
+                  "enable values were set safely again exactly and remain off for manual review."
                 : "De gefaseerde write werd voor de model/parameterfase afgebroken; " +
-                  "alle oorspronkelijke processorstanden zijn exact hersteld.",
-            "Veiligheid");
+                  "all original processor states were restored exactly.",
+            "Safety");
         if (context.ProcessorMutationMayHaveStarted)
         {
             var message =
                 "Een gefaseerde processorwrite werd na een mutation afgebroken. De safetyguards " +
-                "zijn opnieuw exact veilig gezet; controleer de doelconsole handmatig en start " +
-                "daarna opnieuw via droogloop.";
+                "were set safely again exactly; verify the target console manually and restart " +
+                "afterward through dry run.";
             PauseForSafety("SAFETY_GUARD_RECOVERY_REQUIRED", message);
             throw new SafetyGuardRecoveryException(message, exception);
         }
@@ -1881,7 +1881,7 @@ public sealed class SyncCoordinator : IAsyncDisposable
         CancellationToken cancellationToken)
     {
         var expectedSource = sourceSession ??
-            throw new InvalidOperationException("Bronsessie ontbreekt.");
+            throw new InvalidOperationException("Source session is missing.");
         var seenGroups = new HashSet<string>(StringComparer.Ordinal);
         var tolerance = configuration?.Safety.FloatTolerance ?? 0.0001F;
         var targetPreflight = new Dictionary<string, WingValue>(StringComparer.Ordinal);
@@ -1895,14 +1895,14 @@ public sealed class SyncCoordinator : IAsyncDisposable
         {
             ThrowIfEventFenceChanged(
                 executionFence,
-                "De bron- of doelconsole wijzigde tijdens de volledige target-preflight.");
+                "The source or target console changed during full target preflight.");
             if (!IsTransportPairCurrent(
                     expectedSource,
                     expectedTarget,
                     expectedTransportGeneration))
             {
                 throw new ReconciliationInterruptedException(
-                    "De transportsessie wijzigde tijdens de volledige target-preflight.");
+                    "The transport session changed during full target preflight.");
             }
 
             var actual = await ReadExactScalarAsync(
@@ -1913,8 +1913,8 @@ public sealed class SyncCoordinator : IAsyncDisposable
             if (tokenGroup.Any(write => write.Value.Type != actual.Type))
             {
                 throw new IOException(
-                    $"Targetscalar {tokenGroup.Key} heeft niet het geplande WAPI-type; " +
-                    "er zijn geen writes verstuurd.");
+                    $"Target scalar {tokenGroup.Key} does not have the planned WAPI type; " +
+                    "no writes were sent.");
             }
 
             targetPreflight[tokenGroup.Key] = actual;
@@ -1924,7 +1924,7 @@ public sealed class SyncCoordinator : IAsyncDisposable
         {
             ThrowIfEventFenceChanged(
                 executionFence,
-                "De bron- of doelconsole wijzigde tijdens de veiligheidscontrole van het plan.");
+                "The source or target console changed during safety validation of the plan.");
             var guardedMutations = unit.Writes
                 .Where(static write => IsGuardedMutationPath(write.TargetPath))
                 .ToArray();
@@ -1932,8 +1932,8 @@ public sealed class SyncCoordinator : IAsyncDisposable
                 !seenGroups.Add(unit.TransactionGroup))
             {
                 throw new IOException(
-                    $"Processorgroep {unit.TransactionGroup} is niet aaneengesloten in het plan; " +
-                    "er zijn geen writes verstuurd.");
+                    $"Processor group {unit.TransactionGroup} is not contiguous in the plan; " +
+                    "no writes were sent.");
             }
 
             if (guardedMutations.Length == 0)
@@ -1949,8 +1949,8 @@ public sealed class SyncCoordinator : IAsyncDisposable
                         StringComparison.Ordinal)))
             {
                 throw new IOException(
-                    "Een model-/delaymutatie heeft geen unieke fysieke processorgroep; " +
-                    "er zijn geen writes verstuurd.");
+                    "A model/delay mutation has no unique physical processor group; " +
+                    "no writes were sent.");
             }
 
             var mutation = guardedMutations[0];
@@ -1960,8 +1960,8 @@ public sealed class SyncCoordinator : IAsyncDisposable
                 targetEnablePaths.Length != sourceEnablePaths.Length)
             {
                 throw new IOException(
-                    $"Processorgroep {unit.TransactionGroup} heeft geen volledige canonieke " +
-                    "enable-set; er zijn geen writes verstuurd.");
+                    $"Processor group {unit.TransactionGroup} does not have a complete canonical " +
+                    "enable-set; no writes were sent.");
             }
 
             for (var index = 0; index < targetEnablePaths.Length; index++)
@@ -1973,7 +1973,7 @@ public sealed class SyncCoordinator : IAsyncDisposable
                         expectedTransportGeneration))
                 {
                     throw new ReconciliationInterruptedException(
-                        "De transportsessie wijzigde tijdens de veiligheidscontrole van het plan.");
+                        "The transport session changed during safety validation of the plan.");
                 }
 
                 var sourceToken = sourceEnablePaths[index].ToString();
@@ -1986,8 +1986,8 @@ public sealed class SyncCoordinator : IAsyncDisposable
                 if (!targetPreflight.TryGetValue(targetToken, out var targetValue))
                 {
                     throw new IOException(
-                        $"Processorgroep {unit.TransactionGroup} mist een geplande targetwrite " +
-                        $"voor canonieke safetyguard {targetToken}; er zijn geen writes verstuurd.");
+                        $"Processor group {unit.TransactionGroup} is missing a planned target write " +
+                        $"for canonical safety guard {targetToken}; no writes were sent.");
                 }
 
                 if (!IsTransportPairCurrent(
@@ -1996,12 +1996,12 @@ public sealed class SyncCoordinator : IAsyncDisposable
                         expectedTransportGeneration))
                 {
                     throw new ReconciliationInterruptedException(
-                        "De transportsessie wijzigde na de veiligheidscontrole van het plan.");
+                        "The transport session changed after safety validation of the plan.");
                 }
 
                 ThrowIfEventFenceChanged(
                     executionFence,
-                    "De bron- of doelconsole wijzigde tijdens het exact lezen van de safetyguards.");
+                    "The source or target console changed during exact reading of the safety guards.");
 
                 var finalWrites = unit.Writes
                     .Where(write =>
@@ -2022,8 +2022,8 @@ public sealed class SyncCoordinator : IAsyncDisposable
                 if (finalWrites.Length != 1 || safeWrites.Length == 0)
                 {
                     throw new IOException(
-                        $"Processorgroep {unit.TransactionGroup} mist een eenduidige eindwaarde " +
-                        $"of veilige fase-0-write voor {targetToken}; er zijn geen writes verstuurd.");
+                        $"Processor group {unit.TransactionGroup} is missing an unambiguous end value " +
+                        $"or safe phase-0 write for {targetToken}; no writes were sent.");
                 }
 
                 var finalWrite = finalWrites[0];
@@ -2035,8 +2035,7 @@ public sealed class SyncCoordinator : IAsyncDisposable
                         tolerance))
                 {
                     throw new IOException(
-                        $"De exacte enablewaarden voor {sourceToken} en {targetToken} stemmen " +
-                        "niet typeveilig overeen met het plan; er zijn geen writes verstuurd.");
+                        $"The exact enable values for {sourceToken} and {targetToken} do not match the plan in a type-safe way; no writes were sent.");
                 }
 
                 var expectedFinalPhase = IsEnableActive(finalWrite.TargetPath, finalWrite.Value)
@@ -2045,15 +2044,15 @@ public sealed class SyncCoordinator : IAsyncDisposable
                 if (GetExecutionPhase(finalWrite) != expectedFinalPhase)
                 {
                     throw new IOException(
-                        $"De eindfase voor safetyguard {targetToken} is ongeldig; " +
-                        "er zijn geen writes verstuurd.");
+                        $"The final phase for safety guard {targetToken} is invalid; " +
+                        "no writes were sent.");
                 }
             }
         }
 
         ThrowIfEventFenceChanged(
             executionFence,
-            "De bron- of doelconsole wijzigde vóór de eerste write; het plan wordt opnieuw opgebouwd.");
+            "The source or target console changed before the first write; the plan is being rebuilt.");
     }
 
     private bool IsTransportPairCurrent(
@@ -2076,7 +2075,7 @@ public sealed class SyncCoordinator : IAsyncDisposable
         if (exact.Length != 1)
         {
             throw new IOException(
-                $"Scalar {token} kon niet eenduidig en gezaghebbend worden gelezen.");
+                $"Scalar {token} could not be read unambiguously and authoritatively.");
         }
 
         return exact[0].Value;
@@ -2166,7 +2165,7 @@ public sealed class SyncCoordinator : IAsyncDisposable
             if (!IsTargetTransportCurrent(target, expectedTransportGeneration))
             {
                 throw new ReconciliationInterruptedException(
-                    "De doeltransportsessie wijzigde tijdens het lezen van de safetyguards.");
+                    "The target transport session changed while reading the safety guards.");
             }
 
             var token = guard.TargetPath.ToString();
@@ -2179,7 +2178,7 @@ public sealed class SyncCoordinator : IAsyncDisposable
             if (!IsTargetTransportCurrent(target, expectedTransportGeneration))
             {
                 throw new ReconciliationInterruptedException(
-                    "De doeltransportsessie wijzigde na het lezen van een safetyguard.");
+                    "The target transport session changed after reading a safety guard.");
             }
 
             var exact = snapshot
@@ -2190,7 +2189,7 @@ public sealed class SyncCoordinator : IAsyncDisposable
             {
                 throw new IOException(
                     $"De oorspronkelijke processorstand voor safetyguard {token} " +
-                    "kon niet eenduidig en typeveilig worden gelezen.");
+                    "could not be read unambiguously and type-safely.");
             }
 
             originals[token] = exact[0].Value;
@@ -2253,7 +2252,7 @@ public sealed class SyncCoordinator : IAsyncDisposable
                 DiagnosticSeverity.Critical,
                 "SAFETY_GUARD_HOLD_FAILED",
                 holdException.Message,
-                "Veiligheid");
+                "Safety");
             return false;
         }
     }
@@ -2333,7 +2332,7 @@ public sealed class SyncCoordinator : IAsyncDisposable
                 DiagnosticSeverity.Critical,
                 "SAFETY_GUARD_ROLLBACK_FAILED",
                 exception.Message,
-                "Veiligheid");
+                "Safety");
             return false;
         }
     }
@@ -2361,9 +2360,9 @@ public sealed class SyncCoordinator : IAsyncDisposable
             return;
         }
 
-        var currentTarget = targetSession ?? throw new InvalidOperationException("Doelsessie ontbreekt.");
+        var currentTarget = targetSession ?? throw new InvalidOperationException("Target session is missing.");
         var currentConfiguration = configuration ??
-            throw new InvalidOperationException("Configuratie ontbreekt.");
+            throw new InvalidOperationException("Configuration is missing.");
 
         foreach (var write in writes.Where(static item => item.RequiresReadback))
         {
@@ -2382,8 +2381,8 @@ public sealed class SyncCoordinator : IAsyncDisposable
                     currentConfiguration.Safety.FloatTolerance))
             {
                 var message = actual is null
-                    ? $"Geen readback ontvangen voor {token}."
-                    : $"Readback voor {token} wijkt af: verwacht {write.Value}, ontvangen {actual.Value}.";
+                    ? $"No readback received for {token}."
+                    : $"Readback for {token} differs: expected {write.Value}, received {actual.Value}.";
                 PauseForSafety("READBACK_MISMATCH", message);
                 throw new WriteVerificationException(token, write.Value, actual?.Value, message);
             }
@@ -2395,7 +2394,7 @@ public sealed class SyncCoordinator : IAsyncDisposable
 
     private async Task ProcessWorkAsync(CancellationToken cancellationToken)
     {
-        var channel = workChannel ?? throw new InvalidOperationException("Eventkanaal ontbreekt.");
+        var channel = workChannel ?? throw new InvalidOperationException("Event channel is missing.");
         try
         {
             while (await channel.Reader.WaitToReadAsync(cancellationToken).ConfigureAwait(false))
@@ -2468,15 +2467,15 @@ public sealed class SyncCoordinator : IAsyncDisposable
                         Record(
                             DiagnosticSeverity.Trace,
                             "SOURCE_TUPLE_INVALIDATED",
-                            $"Een console-event wijzigde de bron tijdens groepsreadback; " +
+                            $"A console event changed the source during group readback; " +
                             $"coherente herlezing {attempt}/3.",
-                            "Synchronisatie");
+                            "Synchronization");
                     }
 
                     if (expanded is null)
                     {
                         throw new ReconciliationInterruptedException(
-                            "De bron bleef wijzigen tijdens groepsreadback; er zijn geen writes verstuurd.");
+                            "The source kept changing during group readback; no writes were sent.");
                     }
 
                     foreach (var parameter in expanded)
@@ -2518,7 +2517,7 @@ public sealed class SyncCoordinator : IAsyncDisposable
                         DiagnosticSeverity.Warning,
                         "SYNC_BATCH_INTERRUPTED",
                         exception.Message,
-                        "Synchronisatie");
+                        "Synchronization");
                     if (acceptEvents &&
                         !safetyPaused &&
                         !stopping &&
@@ -2559,7 +2558,7 @@ public sealed class SyncCoordinator : IAsyncDisposable
     {
         var result = new Dictionary<string, WingParameter>(StringComparer.Ordinal);
         var refreshedGroups = new HashSet<string>(StringComparer.Ordinal);
-        var currentSource = sourceSession ?? throw new InvalidOperationException("Bronsessie ontbreekt.");
+        var currentSource = sourceSession ?? throw new InvalidOperationException("Source session is missing.");
         var groupedWorks = works
             .Select(work => (
                 Work: work,
@@ -2579,7 +2578,7 @@ public sealed class SyncCoordinator : IAsyncDisposable
             {
                 var delayGroup = GetDynamicGroup(path) ??
                     throw new InvalidOperationException(
-                        $"Delaytoken {path} heeft geen coherente processorgroep.");
+                        $"Delay token {path} has no coherent processor group.");
                 if (refreshedGroups.Add(delayGroup))
                 {
                     var delayRoot = $"/{path.Segments[0]}/{path.Segments[1]}/in/set";
@@ -2648,7 +2647,7 @@ public sealed class SyncCoordinator : IAsyncDisposable
             {
                 var dynamicGroup = GetDynamicGroup(path) ??
                     throw new IOException(
-                        $"Modeltoken {path} heeft geen eenduidige fysieke processorgroep.");
+                        $"Model token {path} has no unambiguous physical processor group.");
                 if (refreshedGroups.Add(dynamicGroup))
                 {
                     var enableTokens = GetCanonicalEnablePaths(path)
@@ -2659,8 +2658,8 @@ public sealed class SyncCoordinator : IAsyncDisposable
                     if (enableTokens.Length == 0)
                     {
                         throw new IOException(
-                            $"Geen gezaghebbende enable-scalar gevonden voor modelgroep {dynamicGroup}; " +
-                            "de modelwrite blijft geblokkeerd.");
+                            $"No authoritative enable scalar found for model group {dynamicGroup}; " +
+                            "the model write remains blocked.");
                     }
 
                     foreach (var parameter in await ReadStableDiscoveredGroupAsync(
@@ -2689,7 +2688,7 @@ public sealed class SyncCoordinator : IAsyncDisposable
                 if (authoritative is null)
                 {
                     throw new IOException(
-                        $"De actuele bronwaarde voor target-drift {work.Parameter.TokenPath} kon niet worden gelezen.");
+                        $"The current source value for target drift {work.Parameter.TokenPath} could not be read.");
                 }
 
                 result[authoritative.TokenPath] = authoritative;
@@ -2748,8 +2747,8 @@ public sealed class SyncCoordinator : IAsyncDisposable
         }
 
         throw new SnapshotUnstableException(
-            $"Processorgroep {dynamicGroup} bleef wijzigen tijdens dubbele exacte reads; " +
-            "er zijn geen writes verstuurd.");
+            $"Processor group {dynamicGroup} kept changing during duplicate exact reads; " +
+            "no writes were sent.");
     }
 
     private async Task<StableGroupPass> ReadScalarCertifiedGroupPassAsync(
@@ -2849,7 +2848,7 @@ public sealed class SyncCoordinator : IAsyncDisposable
 
         throw new IOException(
             $"De scalargroep ({string.Join(", ", tokens)}) bleef wijzigen tijdens drie " +
-            "gezaghebbende dubbele reads; er zijn geen writes verstuurd.");
+            "gezaghebbende dubbele reads; no writes were sent.");
     }
 
     private static async Task<WingParameter> ReadExactParameterAsync(
@@ -2865,7 +2864,7 @@ public sealed class SyncCoordinator : IAsyncDisposable
         if (exact.Length != 1)
         {
             throw new IOException(
-                $"Scalar {token} kon niet eenduidig en gezaghebbend worden gelezen.");
+                $"Scalar {token} could not be read unambiguously and authoritatively.");
         }
 
         return exact[0];
@@ -2910,10 +2909,10 @@ public sealed class SyncCoordinator : IAsyncDisposable
 
         var sourceIsFoh = ReferenceEquals(sourceSession, fohSession);
         var identity = sourceIsFoh
-            ? fohIdentity ?? throw new InvalidOperationException("FOH-identiteit ontbreekt.")
-            : monitorIdentity ?? throw new InvalidOperationException("Podiumidentiteit ontbreekt.");
+            ? fohIdentity ?? throw new InvalidOperationException("FOH identity is missing.")
+            : monitorIdentity ?? throw new InvalidOperationException("Stage identity is missing.");
         await stateSink.StoreAsync(
-                sourceIsFoh ? "FOH" : "Podium",
+                sourceIsFoh ? "FOH" : "Stage",
                 identity,
                 activeEpoch,
                 parameters,
@@ -2935,8 +2934,8 @@ public sealed class SyncCoordinator : IAsyncDisposable
 
                 try
                 {
-                    var currentFoh = fohSession ?? throw new IOException("FOH-sessie ontbreekt.");
-                    var currentMonitor = monitorSession ?? throw new IOException("Podiumsessie ontbreekt.");
+                    var currentFoh = fohSession ?? throw new IOException("FOH session is missing.");
+                    var currentMonitor = monitorSession ?? throw new IOException("Stage session is missing.");
                     await Task.WhenAll(
                             currentFoh.PingAsync(cancellationToken),
                             currentMonitor.PingAsync(cancellationToken))
@@ -2948,7 +2947,7 @@ public sealed class SyncCoordinator : IAsyncDisposable
                 }
                 catch (Exception exception) when (exception is not OperationCanceledException)
                 {
-                    TriggerReconnect($"Healthcheck mislukt: {exception.Message}");
+                    TriggerReconnect($"Health check failed: {exception.Message}");
                 }
             }
         }
@@ -2966,9 +2965,9 @@ public sealed class SyncCoordinator : IAsyncDisposable
         }
 
         var currentConfiguration = configuration ??
-            throw new InvalidOperationException("Configuratie ontbreekt.");
+            throw new InvalidOperationException("Configuration is missing.");
         var currentSource = sourceSession ??
-            throw new InvalidOperationException("Bronsessie ontbreekt.");
+            throw new InvalidOperationException("Source session is missing.");
         var capturedEpoch = Volatile.Read(ref activeEpoch);
         var capturedTransport = Interlocked.Read(ref transportGeneration);
         long capturedSourceSequence;
@@ -3044,8 +3043,8 @@ public sealed class SyncCoordinator : IAsyncDisposable
                     Record(
                         DiagnosticSeverity.Warning,
                         "MISSED_SOURCE_EVENT_RECOVERED",
-                        $"{recovered.Length} bronwijziging(en) werden door de periodieke WAPI-controle hersteld.",
-                        "Synchronisatie");
+                        $"{recovered.Length} source change(s) were recovered by the periodic WAPI check.",
+                        "Synchronization");
                 }
 
                 foreach (var parameter in recovered)
@@ -3080,9 +3079,9 @@ public sealed class SyncCoordinator : IAsyncDisposable
         }
 
         var currentConfiguration = configuration ??
-            throw new InvalidOperationException("Configuratie ontbreekt.");
+            throw new InvalidOperationException("Configuration is missing.");
         var currentTarget = targetSession ??
-            throw new InvalidOperationException("Doelsessie ontbreekt.");
+            throw new InvalidOperationException("Target session is missing.");
         var capturedEpoch = Volatile.Read(ref activeEpoch);
         var capturedTransport = Interlocked.Read(ref transportGeneration);
         var capturedSourceRevision = Interlocked.Read(ref sourceRevision);
@@ -3180,8 +3179,8 @@ public sealed class SyncCoordinator : IAsyncDisposable
                     Record(
                         DiagnosticSeverity.Warning,
                         "MISSED_TARGET_EVENT_RECOVERED",
-                        $"{drifted.Length} gemiste targetwijziging(en) werden door exacte WAPI-readback gevonden.",
-                        "Synchronisatie");
+                        $"{drifted.Length} missed target change(s) were found by exact WAPI readback.",
+                        "Synchronization");
                 }
 
                 foreach (var parameter in drifted)
@@ -3219,8 +3218,8 @@ public sealed class SyncCoordinator : IAsyncDisposable
             DiagnosticSeverity.Warning,
             "TARGET_RECONCILIATION_BUDGET_EXCEEDED",
             "De target-driftcontrole bereikte haar harde WAPI-readbudget van 1,2 s; " +
-            "deze cyclus is afgebroken en de resterende scalars volgen later.",
-            "Synchronisatie");
+            "this cycle was aborted and the remaining scalars will follow later.",
+            "Synchronization");
     }
 
     private DesiredTarget[] SelectTargetReconciliationScalars(DesiredTarget[] desired)
@@ -3421,9 +3420,9 @@ public sealed class SyncCoordinator : IAsyncDisposable
                 Record(
                     DiagnosticSeverity.Trace,
                     "RECONCILIATION_SCALAR_SET",
-                    $"Exacte fallback leest {selectedTokens.Count} scalars; " +
-                    $"eerste tokens: {string.Join(", ", selectedTokens.Take(16))}.",
-                    "Synchronisatie");
+                    $"Exact fallback reads {selectedTokens.Count} scalars; " +
+                    $"first tokens: {string.Join(", ", selectedTokens.Take(16))}.",
+                    "Synchronization");
             }
 
             foreach (var token in selectedTokens)
@@ -3463,8 +3462,8 @@ public sealed class SyncCoordinator : IAsyncDisposable
             DiagnosticSeverity.Warning,
             "RECONCILIATION_BUDGET_EXCEEDED",
             "De gemiste-eventcontrole bereikte haar harde WAPI-readbudget van 1,2 s; " +
-            "deze cyclus is afgebroken en de resterende scalars volgen later.",
-            "Synchronisatie");
+            "this cycle was aborted and the remaining scalars will follow later.",
+            "Synchronization");
     }
 
     private List<string> SelectReconciliationCandidateTokens(string[] candidates)
@@ -3820,8 +3819,8 @@ public sealed class SyncCoordinator : IAsyncDisposable
             Record(
                 DiagnosticSeverity.Warning,
                 "TARGET_DRIFT",
-                $"Handmatige doelwijziging op {parameter.TokenPath}; bronwaarde wordt hersteld.",
-                "Synchronisatie");
+                $"Manual target change on {parameter.TokenPath}; source value is being restored.",
+                "Synchronization");
             var synthetic = new WingParameter(
                 desired.SourcePath.ToString(),
                 desired.Value,
@@ -3881,7 +3880,7 @@ public sealed class SyncCoordinator : IAsyncDisposable
                 Interlocked.Read(ref transportGeneration) != expected.Transport)
             {
                 throw new ReconciliationInterruptedException(
-                    "De bron- of doelconsole wijzigde tijdens het voorbereiden van de safetyguards.");
+                    "The source or target console changed while preparing the safety guards.");
             }
 
             Volatile.Write(ref activeSafetyTransaction, context);
@@ -4035,8 +4034,8 @@ public sealed class SyncCoordinator : IAsyncDisposable
             Interlocked.Decrement(ref queueDepth);
             PauseForSafety(
                 "EVENT_QUEUE_OVERFLOW",
-                "De eventwachtrij is vol; writes zijn gepauzeerd en een volledige resnapshot is vereist.");
-            TriggerReconnect("Eventwachtrij-overflow vereist een verse snapshot.");
+                "The event queue is full; writes are paused and a full resnapshot is required.");
+            TriggerReconnect("Event queue overflow requires a fresh snapshot.");
             return;
         }
 
@@ -4057,7 +4056,7 @@ public sealed class SyncCoordinator : IAsyncDisposable
             }
 
             await stateSink.StoreAsync(
-                    targetIsFoh ? "FOH" : "Podium",
+                    targetIsFoh ? "FOH" : "Stage",
                     identity,
                     activeEpoch,
                     [parameter],
@@ -4132,7 +4131,7 @@ public sealed class SyncCoordinator : IAsyncDisposable
                     await ConnectBothAsync(cancellationToken).ConfigureAwait(false);
                     await VerifyConnectedIdentitiesAsync(cancellationToken).ConfigureAwait(false);
                     await BeginCacheEpochAsync(cancellationToken).ConfigureAwait(false);
-                    ChangeStatus(SyncCoordinatorState.Snapshotting, "Na reconnect beide consoles opnieuw inlezen.");
+                    ChangeStatus(SyncCoordinatorState.Snapshotting, "After reconnect, reread both consoles.");
                     var freshSnapshot = await BuildFreshPlanAsync(cancellationToken).ConfigureAwait(false);
                     while (!IsSnapshotCurrent(freshSnapshot))
                     {
@@ -4142,7 +4141,7 @@ public sealed class SyncCoordinator : IAsyncDisposable
                     var plan = freshSnapshot.Plan;
                     RecordPlanningFindings(plan);
                     ThrowIfStopRequested(
-                        "Een stopverzoek onderbrak de reconnect-snapshot.");
+                        "A stop request interrupted the reconnect snapshot.");
                     if (configuration?.Safety.DryRun == true)
                     {
                         await PreviewPlanAsync(plan).ConfigureAwait(false);
@@ -4153,7 +4152,7 @@ public sealed class SyncCoordinator : IAsyncDisposable
                         {
                             ChangeStatus(
                                 SyncCoordinatorState.ApplyingLive,
-                                "Reconnectverschillen worden live geschreven en teruggelezen.");
+                                "Reconnect differences are being written live and read back.");
                         }
 
                         await ExecutePlanAsync(
@@ -4169,19 +4168,19 @@ public sealed class SyncCoordinator : IAsyncDisposable
                         await PreviewPlanAsync(plan).ConfigureAwait(false);
                         ChangeStatus(
                             SyncCoordinatorState.AwaitingConfirmation,
-                            "Nieuwe snapshot wacht op live bevestiging.");
+                            "New snapshot is waiting for live confirmation.");
                         return;
                     }
 
                     ThrowIfStopRequested(
-                        "Een stopverzoek blokkeerde het hervatten van de eventstroom.");
+                        "A stop request blocked resuming the event stream.");
                     Interlocked.Increment(ref reconnectCount);
                     EnableEventIntake(freshSnapshot);
                     ChangeStatus(
                         configuration?.Safety.DryRun == true
                             ? SyncCoordinatorState.RunningDryRun
                             : SyncCoordinatorState.RunningLive,
-                        "Beide consoles zijn opnieuw gevalideerd en ingelezen.");
+                        "Both consoles were revalidated and reread.");
                     RaiseMetrics();
                     return;
                 }
@@ -4204,7 +4203,7 @@ public sealed class SyncCoordinator : IAsyncDisposable
                     Record(
                         DiagnosticSeverity.Error,
                         "RECONNECT_ATTEMPT_FAILED",
-                        $"Reconnectpoging {attempt} mislukt: {exception.Message}",
+                        $"Reconnect attempt {attempt} failed: {exception.Message}",
                         "Netwerk");
                 }
                 finally
@@ -4235,7 +4234,7 @@ public sealed class SyncCoordinator : IAsyncDisposable
 
         await Task.WhenAll(
                 stateSink.MarkStaleAsync("FOH", fohIdentity, cancellationToken),
-                stateSink.MarkStaleAsync("Podium", monitorIdentity, cancellationToken))
+                stateSink.MarkStaleAsync("Stage", monitorIdentity, cancellationToken))
             .ConfigureAwait(false);
     }
 
@@ -4245,7 +4244,7 @@ public sealed class SyncCoordinator : IAsyncDisposable
         liveWritesArmed = false;
         safetyPaused = true;
         ChangeStatus(SyncCoordinatorState.Paused, message);
-        Record(DiagnosticSeverity.Critical, code, message, "Veiligheid");
+        Record(DiagnosticSeverity.Critical, code, message, "Safety");
     }
 
     private void RecordPlanningFindings(WritePlan plan)
@@ -4312,8 +4311,8 @@ public sealed class SyncCoordinator : IAsyncDisposable
         if (!activeTransactionDrained)
         {
             FailIncompleteStop(
-                "Een actieve WAPI-write/readback-transactie kon niet veilig worden " +
-                "afgerond; helpers blijven geblokkeerd en 'Gestopt' wordt niet gemeld.");
+                "An active WAPI write/readback transaction could not be safely " +
+                "completed; helpers remain blocked and 'Stopped' is not reported.");
         }
 
         SuspendEventIntake();
@@ -4356,7 +4355,7 @@ public sealed class SyncCoordinator : IAsyncDisposable
         if (!disconnectsFinished)
         {
             FailIncompleteStop(
-                "Een WAPI-disconnect bleef actief; de oude helpers blijven geblokkeerd voor herstart.");
+                "A WAPI disconnect remained active; the old helpers remain blocked for restart.");
         }
 
         foreach (var session in sessions)
@@ -4384,7 +4383,7 @@ public sealed class SyncCoordinator : IAsyncDisposable
         if (!disposalsFinished)
         {
             FailIncompleteStop(
-                "Een WAPI-helper bleef tijdens dispose actief; herstart is geblokkeerd.");
+                "A WAPI helper remained active during dispose; restart is blocked.");
         }
 
         var failedDisposals = sessions
@@ -4403,7 +4402,7 @@ public sealed class SyncCoordinator : IAsyncDisposable
             }
 
             FailIncompleteStop(
-                "Niet alle WAPI-helpers konden aantoonbaar worden afgesloten; herstart is geblokkeerd.");
+                "Not all WAPI helpers could be demonstrably closed; restart is blocked.");
         }
 
         var backgroundStopped = await WaitForBackgroundTasksAsync(
@@ -4416,9 +4415,9 @@ public sealed class SyncCoordinator : IAsyncDisposable
             safetyPaused = true;
             ChangeStatus(
                 SyncCoordinatorState.Faulted,
-                "Stoppen kon niet veilig worden afgerond; herstart WingSync voordat je opnieuw synchroniseert.");
+                "Stopping could not be completed safely; restart WingSync before synchronizing again.");
             throw new TimeoutException(
-                "Een synchronisatietaak bleef actief nadat beide WAPI-sessies waren gesloten.");
+                "A synchronization task remained active after both WAPI sessions were closed.");
         }
 
         sessionCancellation?.Dispose();
@@ -4467,7 +4466,7 @@ public sealed class SyncCoordinator : IAsyncDisposable
 
         if (!preserveFaultedStatus)
         {
-            ChangeStatus(SyncCoordinatorState.Stopped, "Synchronisatie gestopt.");
+            ChangeStatus(SyncCoordinatorState.Stopped, "Synchronization stopped.");
         }
     }
 
@@ -4551,7 +4550,7 @@ public sealed class SyncCoordinator : IAsyncDisposable
         }
 
         return task.Exception?.GetBaseException().Message ??
-            "De cleanup-taak eindigde zonder succesvolle bevestiging.";
+            "The cleanup task ended without successful confirmation.";
     }
 
     private void FailIncompleteStop(string message)
@@ -4560,7 +4559,7 @@ public sealed class SyncCoordinator : IAsyncDisposable
         safetyPaused = true;
         ChangeStatus(
             SyncCoordinatorState.Faulted,
-            "Stoppen is nog niet aantoonbaar afgerond; herstart blijft geblokkeerd.");
+            "Stopping is not demonstrably complete yet; restart remains blocked.");
         Record(DiagnosticSeverity.Critical, "STOP_INCOMPLETE", message, "Lifecycle");
         throw new TimeoutException(message);
     }
@@ -5063,7 +5062,7 @@ public sealed class InitialSyncPreviewChangedException : InvalidOperationExcepti
 {
     /// <summary>Initializes the exception with the replacement preview.</summary>
     public InitialSyncPreviewChangedException(InitialSyncPreviewSummary preview)
-        : base("De initiële consoleverschillen zijn gewijzigd; bevestig de nieuwe preview.")
+        : base("The initial console differences changed; confirm the new preview.")
     {
         Preview = preview ?? throw new ArgumentNullException(nameof(preview));
     }

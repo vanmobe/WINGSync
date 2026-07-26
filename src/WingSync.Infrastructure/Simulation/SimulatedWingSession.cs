@@ -55,9 +55,9 @@ public sealed class SimulatedWingSession : IWingSession
     {
         ThrowIfDisposed();
         Endpoint = endpoint ?? throw new ArgumentNullException(nameof(endpoint));
-        ChangeState(WingSessionState.Connecting, "Simulatie maakt verbinding.");
+        ChangeState(WingSessionState.Connecting, "Simulation connecting.");
         await DelayAndMaybeFail(cancellationToken).ConfigureAwait(false);
-        ChangeState(WingSessionState.Connected, "Simulator verbonden.");
+        ChangeState(WingSessionState.Connected, "Simulator connected.");
     }
 
     /// <inheritdoc />
@@ -200,7 +200,7 @@ public sealed class SimulatedWingSession : IWingSession
         ThrowIfDisposed();
         if (State != WingSessionState.Connected)
         {
-            throw new InvalidOperationException("De gesimuleerde WING is niet verbonden.");
+            throw new InvalidOperationException("The simulated WING is not connected.");
         }
     }
 
@@ -249,6 +249,6 @@ public sealed class SimulatedWingSessionFactory : IWingSessionFactory
 
         return sessions!.Count > 0
             ? sessions.Dequeue()
-            : throw new InvalidOperationException($"Geen gesimuleerde sessie beschikbaar voor {role}.");
+            : throw new InvalidOperationException($"No simulated session available for {role}.");
     }
 }

@@ -99,9 +99,9 @@ public partial class MainWindow : Window
             catch (Exception exception)
             {
                 var answer = MessageBox.Show(
-                    $"WingSync kon niet veilig opstarten.\n\n{exception.Message}\n\n" +
-                    "Controleer de opslagrechten en de volledigheid van de installatie.",
-                    "WingSync – opstartfout",
+                    $"WingSync could not start safely.\n\n{exception.Message}\n\n" +
+                    "Check storage permissions and that the installation is complete.",
+                    "WingSync – startup error",
                     MessageBoxButton.RetryCancel,
                     MessageBoxImage.Error,
                     MessageBoxResult.Cancel);
@@ -137,11 +137,11 @@ public partial class MainWindow : Window
         if (!_viewModel.CanCloseImmediately)
         {
             var detail = _viewModel.IsRunning
-                ? "De synchronisatie is actief. Stoppen verbreekt beide verbindingen."
-                : "Er wordt nog een lokale of netwerkactie afgerond.";
+                ? "Synchronization is active. Stopping disconnects both connections."
+                : "A local or network action is still being completed.";
             var answer = MessageBox.Show(
-                $"{detail}\n\nWingSync afsluiten?",
-                "WingSync afsluiten",
+                $"{detail}\n\nClose WingSync?",
+                "Close WingSync",
                 MessageBoxButton.YesNo,
                 MessageBoxImage.Warning,
                 MessageBoxResult.No);
@@ -169,8 +169,8 @@ public partial class MainWindow : Window
             _disposeTask = null;
             IsEnabled = true;
             MessageBox.Show(
-                $"WingSync kon niet veilig afsluiten.\n\n{exception.Message}",
-                "WingSync – afsluitfout",
+                $"WingSync could not close safely.\n\n{exception.Message}",
+                "WingSync – shutdown error",
                 MessageBoxButton.OK,
                 MessageBoxImage.Error);
         }
