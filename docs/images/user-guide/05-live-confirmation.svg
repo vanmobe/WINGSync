@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1240" height="800" viewBox="0 0 1240 800">
+<style>text{font-family:Segoe UI,Arial,sans-serif;fill:#172033}.small{font-size:12px}.tiny{font-size:10px}.label{font-size:10px;font-weight:700;fill:#777872}.muted{fill:#5c667a}.title{font-size:28px;font-weight:650}.h{font-size:17px;font-weight:650}.mono{font-family:Consolas,monospace}.bold{font-weight:700}.btn{font-size:14px;font-weight:650}.num{font-size:28px;font-weight:650}</style>
+<rect x="0" y="0" width="1240" height="800" rx="0" fill="#dfe4ec" stroke="#dfe4ec" stroke-width="1"/>
+<rect x="210" y="60" width="820" height="680" rx="0" fill="#f3f5f8" stroke="#b8c1ce" stroke-width="1"/>
+<rect x="210" y="60" width="820" height="76" rx="0" fill="#fcfcfa" stroke="#d7d7d1" stroke-width="1"/>
+<circle cx="254" cy="98" r="22" fill="#fff2a8" stroke="#e4c400"/>
+<text x="254" y="106" class="bold" style="fill:#6c5a00;font-size:24px;text-anchor:middle;">!</text>
+<text x="290" y="94" class="bold" style="font-size:22px;">Review the fresh WING diff</text>
+<text x="290" y="116" class="small" style="fill:#5c667a;">Nothing is written until you deliberately confirm below.</text>
+<rect x="232" y="154" width="776" height="86" rx="10" fill="#ffffff" stroke="#dce1e8" stroke-width="1"/>
+<text x="248" y="182" class="label" style="">SOURCE</text>
+<text x="248" y="208" class="mono" style="">FOH · DEMO-FOH · 127.10.0.10 · DEMO-FOH-0001</text>
+<text x="620" y="208" class="bold" style="fill:#a58c00;font-size:24px;text-anchor:middle;">→</text>
+<text x="652" y="182" class="label" style="">TARGET</text>
+<text x="652" y="208" class="mono" style="">Stage · DEMO-STAGE · 127.10.0.11 · DEMO-MON-0001</text>
+<rect x="232" y="259" width="250" height="90" rx="10" fill="#ffffff" stroke="#dce1e8" stroke-width="1"/>
+<text x="248" y="286" class="small" style="fill:#5c667a;">Fresh differences</text>
+<text x="248" y="324" class="num" style="fill:#172033;">1</text>
+<rect x="494" y="259" width="250" height="90" rx="10" fill="#ffffff" stroke="#dce1e8" stroke-width="1"/>
+<text x="510" y="286" class="small" style="fill:#5c667a;">Executable after confirmation</text>
+<text x="510" y="324" class="num" style="fill:#17835c;">1</text>
+<rect x="756" y="259" width="250" height="90" rx="10" fill="#ffffff" stroke="#dce1e8" stroke-width="1"/>
+<text x="772" y="286" class="small" style="fill:#5c667a;">Blocked by safety</text>
+<text x="772" y="324" class="num" style="fill:#b46b08;">0</text>
+<rect x="232" y="369" width="776" height="150" rx="10" fill="#ffffff" stroke="#dce1e8" stroke-width="1"/>
+<text x="248" y="404" class="h" style="">Direction, scopes, and mappings</text>
+<text x="248" y="432" class="small" style="">FOH → Stage · readback required for every write</text>
+<text x="248" y="458" class="small" style="">Enabled scopes: CUST, FILTER, DELAY, GATE, DYN, EQ</text>
+<text x="248" y="484" class="small" style="">Mappings: 40 input channels, 8 AUX channels</text>
+<rect x="248" y="499" width="80" height="26" rx="9" fill="#f1f2ee" stroke="#d9dad4" stroke-width="1"/>
+<text x="260" y="517" class="small" style="">EQ · 1</text>
+<rect x="334" y="499" width="95" height="26" rx="9" fill="#f1f2ee" stroke="#d9dad4" stroke-width="1"/>
+<text x="346" y="517" class="small" style="">CUST · 0</text>
+<rect x="434" y="499" width="95" height="26" rx="9" fill="#f1f2ee" stroke="#d9dad4" stroke-width="1"/>
+<text x="446" y="517" class="small" style="">FILTER · 0</text>
+<rect x="548" y="499" width="95" height="26" rx="9" fill="#f1f2ee" stroke="#d9dad4" stroke-width="1"/>
+<text x="560" y="517" class="small" style="">DELAY · 0</text>
+<rect x="232" y="539" width="776" height="70" rx="10" fill="#fff3e2" stroke="#f0c67f" stroke-width="1"/>
+<circle cx="263" cy="574" r="15" fill="#d57a00" stroke="#d57a00"/>
+<text x="263" y="580" class="bold" style="fill:#fff;font-size:18px;text-anchor:middle;">!</text>
+<text x="290" y="567" class="bold" style="">Default choice is No</text>
+<text x="290" y="589" class="small" style="fill:#76531f;">Verify source, target, serial pins, scopes, mappings, executable changes, and blocked changes before activating live.</text>
+<rect x="210" y="692" width="820" height="48" rx="0" fill="#fcfcfa" stroke="#d7d7d1" stroke-width="1"/>
+<text x="232" y="722" class="tiny" style="fill:#5c667a;">Default choice: cancel · readback remains required</text>
+<rect x="740" y="699" width="120" height="38" rx="6" fill="#e8eef5" stroke="#dce1e8" stroke-width="1"/>
+<text x="800.0" y="723" class="btn" style="fill:#172033;font-size:14px;text-anchor:middle;">No, cancel</text>
+<rect x="872" y="699" width="135" height="38" rx="6" fill="#e5c600" stroke="#e5c600" stroke-width="1"/>
+<text x="939.5" y="723" class="btn" style="fill:#121212;font-size:14px;text-anchor:middle;">Activate live</text>
+</svg>

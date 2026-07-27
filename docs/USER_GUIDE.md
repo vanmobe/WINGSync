@@ -36,6 +36,8 @@ For training without hardware:
 
 The **Status** page shows a checklist and always the next safe action.
 
+![Status overview showing console identity, setup progress, and dry-run counters.](images/user-guide/01-status-overview.svg)
+
 ### 1. Find consoles and pin identity
 
 Open **Synchronization** and choose **Find consoles**. Assign one physical
@@ -55,6 +57,8 @@ later check.
 
 The recommended direction is **FOH → Stage**. **Stage → FOH** is supported,
 but deliberately shows a warning. There is no bidirectional mode.
+
+![Synchronization setup with both demo consoles assigned and dry-run safety enabled.](images/user-guide/02-find-consoles-and-safety.svg)
 
 ### 2. Choose scopes and channel mapping
 
@@ -96,6 +100,8 @@ Then fill in the mapping:
 - an unresolvable sidechain reference blocks the entire affected gate or
   dynamics processor group.
 
+![Channel mapping table with active input and AUX rows ready for validation.](images/user-guide/03-channel-mapping.svg)
+
 **Save configuration** writes the configuration atomically to the local data
 folder. Validation errors are shown together below the mapping; resolve all of
 them before you start.
@@ -130,6 +136,8 @@ Use **Activity** to inspect the exact tokens, scopes, reconnects, and
 problems. Stop after the review. The checklist then shows the safe transition
 to live mode.
 
+![Dry-run status after a preview has been built, with no verified live writes.](images/user-guide/04-dry-run-preview.svg)
+
 ## From dry run to live
 
 Perform this procedure only in a maintenance window:
@@ -153,6 +161,10 @@ Perform this procedure only in a maintenance window:
    the initial apply. In that phase, confirmed writes and their required
    readback are active. Only after successful completion does
    **LIVE ACTIVE · READBACK OK** appear.
+
+![Live confirmation dialog with source and target serial pins, diff counts, and the safe No default.](images/user-guide/05-live-confirmation.svg)
+
+![Status page after live mode is active and writes have been read back successfully.](images/user-guide/06-live-active-readback.svg)
 
 If you change a console, IP, direction, scope, or mapping, WingSync revokes
 live and high-risk approval, switches back to dry run, and invalidates the
@@ -191,6 +203,8 @@ and both states are read again and a new diff is built. An error banner gives
 the cause and recovery action; do not resume until the cause is resolved and
 the new preview has been reviewed.
 
+![Blocking fault banner showing that writes are paused until the problem is resolved and identities are rechecked.](images/user-guide/09-blocking-fault.svg)
+
 ## Local cache
 
 WingSync stores the last observed state per console under
@@ -208,10 +222,14 @@ The cache is only for offline display and diagnostics:
 Under **Settings → Rebuild cache** you can reset the cache after stopping. The
 previous cache is kept in a dated quarantine folder.
 
+![Settings page showing recovery behavior, local cache controls, and product diagnostics.](images/user-guide/08-settings-cache-support.svg)
+
 ## Activity, logs, and support bundle
 
 The **Activity** page can filter by all, problems, writes, and network.
 **Clear** removes only the in-memory list; local JSONL log files are kept.
+
+![Activity page listing discovery, dry-run preview, network, and support bundle events.](images/user-guide/07-activity-log.svg)
 
 **Export support bundle** asks for permission first and creates a zip under
 `%LOCALAPPDATA%\WingSync\support` containing:

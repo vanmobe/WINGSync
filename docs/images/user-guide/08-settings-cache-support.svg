@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1240" height="800" viewBox="0 0 1240 800">
+<style>text{font-family:Segoe UI,Arial,sans-serif;fill:#172033}.small{font-size:12px}.tiny{font-size:10px}.label{font-size:10px;font-weight:700;fill:#777872}.muted{fill:#5c667a}.title{font-size:28px;font-weight:650}.h{font-size:17px;font-weight:650}.mono{font-family:Consolas,monospace}.bold{font-weight:700}.btn{font-size:14px;font-weight:650}.num{font-size:28px;font-weight:650}</style>
+<rect x="0" y="0" width="1240" height="800" rx="0" fill="#f3f5f8" stroke="#f3f5f8" stroke-width="1"/>
+<rect x="0" y="0" width="1240" height="88" rx="0" fill="#fcfcfa" stroke="#d7d7d1" stroke-width="1"/>
+<rect x="14" y="10" width="68" height="68" rx="9" fill="#252525" stroke="#111111" stroke-width="1"/>
+<text x="30" y="40" class="bold" style="fill:#fff;font-size:13px;">WING</text>
+<text x="30" y="58" class="bold" style="fill:#e5c600;font-size:13px;">SYNC</text>
+<text x="102" y="37" class="bold" style="font-size:19px;">WING</text>
+<text x="160" y="37" class="bold" style="fill:#e5c600;font-size:19px;">SYNC</text>
+<text x="104" y="57" class="label" style="">FOH / MONITOR LINK</text>
+<rect x="224" y="22" width="790" height="44" rx="7" fill="#f3f3ef" stroke="#deded8" stroke-width="1"/>
+<text x="238" y="40" class="label" style="">CONSOLEFLOW</text>
+<text x="238" y="58" class="bold" style="font-size:13px;">FOH ↦ STAGE</text>
+<line x1="470" y1="26" x2="470" y2="62" stroke="#d4d4ce" stroke-width="1"/>
+<text x="492" y="40" class="label" style="">SESSION STATUS</text>
+<circle cx="505" cy="54" r="4" fill="#5c667a" stroke="#5c667a"/>
+<text x="517" y="58" class="bold" style="font-size:13px;">Not started</text>
+<line x1="750" y1="26" x2="750" y2="62" stroke="#d4d4ce" stroke-width="1"/>
+<text x="773" y="40" class="label" style="">MODE</text>
+<rect x="773" y="45" width="210" height="22" rx="11" fill="#ebeef2" stroke="#ebeef2" stroke-width="1"/>
+<text x="878" y="60" class="bold" style="fill:#5c667a;font-size:10px;text-anchor:middle;">LIVE OFF · DRY RUN</text>
+<rect x="1028" y="25" width="76" height="38" rx="6" fill="#be3b43" stroke="#be3b43" stroke-width="1"/>
+<text x="1066" y="49" class="btn" style="fill:#fff;font-size:14px;text-anchor:middle;">Stop</text>
+<rect x="1112" y="25" width="114" height="38" rx="6" fill="#e5c600" stroke="#e5c600" stroke-width="1"/>
+<text x="1169" y="49" class="btn" style="fill:#121212;font-size:14px;text-anchor:middle;">Setup required</text>
+<rect x="0" y="88" width="188" height="670" rx="0" fill="#f8f8f5" stroke="#d7d7d1" stroke-width="1"/>
+<text x="23" y="120" class="label" style="">WORKSPACE</text>
+<text x="24" y="140" class="bold" style="fill:#a58c00;font-size:16px;">●</text>
+<text x="51" y="140" class="" style="font-size:14px;">Status</text>
+<text x="24" y="194" class="bold" style="fill:#a58c00;font-size:16px;">↔</text>
+<text x="51" y="194" class="" style="font-size:14px;">Synchronization</text>
+<text x="24" y="248" class="bold" style="fill:#a58c00;font-size:16px;">≡</text>
+<text x="51" y="248" class="" style="font-size:14px;">Activity</text>
+<rect x="9" y="278" width="170" height="43" rx="6" fill="#fff2a8" stroke="#e4c400" stroke-width="1"/>
+<text x="24" y="302" class="bold" style="fill:#a58c00;font-size:16px;">⚙</text>
+<text x="51" y="302" class="bold" style="font-size:14px;">Settings</text>
+<rect x="10" y="648" width="168" height="82" rx="6" fill="#efefea" stroke="#d7d7d1" stroke-width="1"/>
+<text x="21" y="672" class="label" style="">LIVE AUDIO SAFETY</text>
+<text x="21" y="693" class="bold" style="font-size:11px;">Dry run and readback first</text>
+<text x="21" y="715" class="tiny" style="fill:#5c667a;">v1.0.0 · DEMO</text>
+<rect x="188" y="88" width="1052" height="58" rx="0" fill="#fff" stroke="#dce1e8" stroke-width="1"/>
+<text x="216" y="123" class="h" style="">Settings</text>
+<text x="216" y="140" class="tiny" style="fill:#5c667a;">Recovery, cache, and product information</text>
+<rect x="0" y="758" width="1240" height="42" rx="0" fill="#20211f" stroke="#111211" stroke-width="1"/>
+<rect x="16" y="769" width="4" height="20" rx="2" fill="#e5c600" stroke="#e5c600" stroke-width="1"/>
+<text x="30" y="784" class="label" style="fill:#e5c600;">NEXT STEP</text>
+<text x="218" y="178" class="title" style="">Settings</text>
+<text x="218" y="206" class="small" style="fill:#5c667a;">Behavior during startup, network loss, and local storage.</text>
+<rect x="218" y="233" width="820" height="120" rx="10" fill="#ffffff" stroke="#dce1e8" stroke-width="1"/>
+<text x="238" y="266" class="h" style="">Recovery and network</text>
+<text x="238" y="294" class="bold" style="">Automatically reconnect</text>
+<text x="238" y="317" class="small" style="fill:#5c667a;">Enabled. Writes remain paused until both console identities have been re-confirmed and both states</text>
+<text x="238" y="334" class="small" style="fill:#5c667a;">have been freshly read.</text>
+<rect x="218" y="373" width="820" height="165" rx="10" fill="#ffffff" stroke="#dce1e8" stroke-width="1"/>
+<text x="238" y="406" class="h" style="">Local cache and logs</text>
+<text x="238" y="433" class="small" style="fill:#5c667a;">Storage folder</text>
+<rect x="238" y="443" width="780" height="36" rx="0" fill="#fff" stroke="#b8c1ce" stroke-width="1"/>
+<text x="248" y="466" class="mono" style="">%LOCALAPPDATA%\WingSync</text>
+<rect x="238" y="493" width="105" height="38" rx="6" fill="#e8eef5" stroke="#dce1e8" stroke-width="1"/>
+<text x="290.5" y="517" class="btn" style="fill:#172033;font-size:14px;text-anchor:middle;">Open folder</text>
+<rect x="353" y="493" width="120" height="38" rx="6" fill="#e8eef5" stroke="#dce1e8" stroke-width="1"/>
+<text x="413.0" y="517" class="btn" style="fill:#172033;font-size:14px;text-anchor:middle;">Rebuild cache</text>
+<text x="238" y="550" class="tiny" style="fill:#5c667a;">An outdated cache is never automatically written back to a WING.</text>
+<rect x="218" y="558" width="820" height="120" rx="10" fill="#ffffff" stroke="#dce1e8" stroke-width="1"/>
+<text x="238" y="591" class="h" style="">About WingSync</text>
+<text x="238" y="620" class="small" style="">WingSync 1.0.0 · Windows x64 · demo</text>
+<text x="238" y="644" class="small" style="fill:#5c667a;">Communication via x32ram/wapi; SLA included in the package.</text>
+<rect x="868" y="583" width="150" height="38" rx="6" fill="#e8eef5" stroke="#dce1e8" stroke-width="1"/>
+<text x="943.0" y="607" class="btn" style="fill:#172033;font-size:14px;text-anchor:middle;">Copy diagnostics</text>
+<text x="105" y="784" class="small" style="fill:#ecece8;">Next step: find both consoles and verify their serial number.</text>
+</svg>
