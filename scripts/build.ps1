@@ -94,7 +94,7 @@ foreach ($vendorFile in $expectedVendorHashes.GetEnumerator()) {
         $normalizedLfHash = [System.Convert]::ToHexString(
             [System.Security.Cryptography.SHA256]::HashData(
                 [System.Text.Encoding]::UTF8.GetBytes($normalizedLfContent)))
-        $normalizedCrlfContent = $normalizedLfContent.Replace("`n", "`r`n")
+        $normalizedCrlfContent = $content.Replace("`r`n", "`n").Replace("`r", "`n").Replace("`n", "`r`n")
         $normalizedCrlfHash = [System.Convert]::ToHexString(
             [System.Security.Cryptography.SHA256]::HashData(
                 [System.Text.Encoding]::UTF8.GetBytes($normalizedCrlfContent)))
