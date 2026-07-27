@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Windows;
 using System.Windows.Media;
 using WingSync.Core.Abstractions;
 using WingSync.Core.Domain;
@@ -182,6 +183,16 @@ public sealed record DirectionOption(string DisplayName, SyncDirection Direction
 {
     public override string ToString() => DisplayName;
 }
+
+public sealed record WorkflowStepViewModel(
+    string Name,
+    string Marker,
+    string Status,
+    Brush Background,
+    Brush Foreground,
+    Brush Connector,
+    Visibility ConnectorVisibility,
+    string AutomationId);
 
 public sealed record ActivityItemViewModel(
     DateTimeOffset Timestamp,
