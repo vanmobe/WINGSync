@@ -34,10 +34,8 @@ function Assert-LastExitCode {
 $nativeBuild = Join-Path $repoRoot 'build\native'
 $artifactRoot = Join-Path $repoRoot 'artifacts'
 $version = $Version
-if ($version -notmatch '^(\d+)\.(\d+)\.(\d+)(?:-[0-9A-Za-z.-]+)?$') {
-    throw "Version must be a semantic version like 0.1.0 or 0.1.0-preview. Actual: $version"
-}
-$assemblyFileVersion = "$($Matches[1]).$($Matches[2]).$($Matches[3]).0"
+$versionParts = $version.Split('-', 2)[0].Split('.')
+$assemblyFileVersion = "$($versionParts[0]).$($versionParts[1]).$($versionParts[2]).0"
 if ($Configuration -eq 'Release' -and -not $SkipTests) {
     $packageQualifier = '-internal-evaluation'
     $releaseStatus = 'internal-evaluation-unsigned'

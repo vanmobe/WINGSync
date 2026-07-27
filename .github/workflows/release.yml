@@ -27,7 +27,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event_name == 'workflow_dispatch' && (inputs.source_ref || github.ref_name) || github.ref }}
+          ref: ${{ github.event_name == 'workflow_dispatch' && (inputs.source_ref || github.ref) || github.ref }}
 
       - name: Set up .NET SDK
         uses: actions/setup-dotnet@v4
