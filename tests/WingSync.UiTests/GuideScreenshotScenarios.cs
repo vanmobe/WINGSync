@@ -88,16 +88,15 @@ internal static class GuideScreenshotScenarios
             TimeSpan.FromSeconds(5));
         app.Invoke("TestConnectionsButton");
         app.Navigate("NavigationStatus", "Status");
-        app.WaitFor(
-            () =>
-            {
-                var banner = app.TryFindById("ProblemBanner");
-                return banner is not null && !banner.Current.IsOffscreen;
-            },
-            TimeSpan.FromSeconds(5),
-            "the blocking problem banner");
+        app.WaitFor(ProblemBannerVisible, TimeSpan.FromSeconds(5), "the blocking problem banner");
         Save(app, outputDirectory, "09-blocking-fault.png");
         app.CloseAndWait();
+
+        bool ProblemBannerVisible()
+        {
+            var banner = app.TryFindById("ProblemBanner");
+            return banner is not null && !banner.Current.IsOffscreen;
+        }
     }
 
     private static void CompleteConnectionTest(UiAppSession app)
