@@ -146,7 +146,7 @@ internal static class UiScenarios
                      "WorkflowSteps",
                      "WorkflowStageSetup",
                      "WorkflowStageConnection",
-                     "WorkflowStageDryrun",
+                     "WorkflowStageDryRun",
                      "WorkflowStageReview",
                      "WorkflowStageLive",
                      "SetupProgressText",

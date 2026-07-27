@@ -840,7 +840,7 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
             var automationIds = new[] {
                 "WorkflowStageSetup",
                 "WorkflowStageConnection",
-                "WorkflowStageDryrun",
+                "WorkflowStageDryRun",
                 "WorkflowStageReview",
                 "WorkflowStageLive",
             };
