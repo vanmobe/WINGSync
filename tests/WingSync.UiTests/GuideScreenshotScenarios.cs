@@ -91,10 +91,14 @@ internal static class GuideScreenshotScenarios
         bool problemBannerVisible()
         {
             var banner = app.TryFindById("ProblemBanner");
-            return banner is not null && !banner.Current.IsOffscreen;
+            if (banner is null) return false;
+            if (!banner.Current.IsOffscreen) return true;
+            if (banner.TryGetCurrentPattern(ScrollItemPattern.Pattern, out var raw))
+                ((ScrollItemPattern)raw).ScrollIntoView();
+            return false;
         }
 
-        app.WaitFor(problemBannerVisible, TimeSpan.FromSeconds(5), "the blocking problem banner");
+        app.WaitFor(problemBannerVisible, TimeSpan.FromSeconds(15), "the blocking problem banner");
         Save(app, outputDirectory, "09-blocking-fault.png");
         app.CloseAndWait();
     }
