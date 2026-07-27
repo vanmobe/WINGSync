@@ -19,8 +19,12 @@ default choice in a live confirmation is always **No**.
 3. Allow UDP and TCP port 2222 for WingSync and `WingSync.WapiHost.exe`. A
    different WAPI port is not supported.
 4. Start `WingSync.exe`. The app starts with **Dry run (no writes)** enabled.
-5. Always check the direction, session status, and mode in the top bar before
-   performing an action.
+5. Always check the direction, session status, mode, and five-stage workflow
+   timeline at the top before performing an action. The yellow button advances
+   the current safe stage.
+
+WingSync uses a dark operator theme throughout the main window and confirmation
+dialogs to reduce glare in control-room environments.
 
 Final automation was performed on Windows x64 build 26200. The app is
 self-contained; older Windows builds were not validated in this acceptance
@@ -34,7 +38,11 @@ For training without hardware:
 
 ## Simple setup in four steps
 
-The **Status** page shows a checklist and always the next safe action.
+The persistent timeline shows **Setup → Connection → Dry run → Review → Live**.
+A completed stage has a checkmark, the current stage is highlighted, and later
+stages remain muted. The primary button in the top bar always performs the next
+safe action, while the **Synchronization** page remains available for editing
+details.
 
 ![Status overview showing console identity, setup progress, and dry-run counters.](images/user-guide/01-status-overview.svg)
 
@@ -108,7 +116,7 @@ them before you start.
 
 ### 3. Test both connections
 
-Choose **Test connection**. WingSync checks for both roles:
+Choose **Test connection** in the top bar. WingSync checks for both roles:
 
 - the discovered IP/serial combination;
 - that FOH and stage are different physical consoles;
@@ -120,9 +128,9 @@ or a local cache does not count as a successful connection test.
 
 ### 4. Run dry run and review the preview
 
-Leave **Dry run (no writes)** enabled and choose **Start dry run**. WingSync
-reads both consoles fresh, builds the mapping diff, and logs what would
-happen. In this mode no parameter write is sent to any console.
+Leave **Dry run (no writes)** enabled and choose **Start dry run** in the top
+bar. WingSync reads both consoles fresh, builds the mapping diff, and logs what
+would happen. In this mode no parameter write is sent to any console.
 
 On **Status**, review three separate counters:
 
@@ -145,12 +153,13 @@ Perform this procedure only in a maintenance window:
 1. Re-check the backups, direction, visible serial numbers, scopes, and
    mapping.
 2. Stop the dry run.
-3. Disable **Dry run (no writes)**. Readback for every write is always enabled
-   and cannot be turned off.
+3. Choose **Enable live** in the top bar. This only changes the session to
+   live-ready mode; it does not write anything. Readback for every write is
+   always enabled and cannot be turned off.
 4. Enable **Allow high-risk scopes** only when the selected tags, routing,
    inserts, mains, sends, faders, mutes, or configuration are truly allowed to
    change live.
-5. Choose **Start live**. During connect, snapshots, and the preview the mode
+5. Choose **Start live** in the top bar. During connect, snapshots, and the preview the mode
    is **PREPARING · NO WRITES**.
 6. In the confirmation, verify source and target IP, both serial pins,
    direction, scopes, mapping count, executable changes, blocked changes, and

@@ -79,8 +79,8 @@ public sealed class ScopeSelectionViewModel : ObservableObject
     public string RiskLabel => IsHighRisk ? "HIGH RISK" : "STANDARD";
 
     public Brush RiskBrush => IsHighRisk
-        ? new SolidColorBrush(Color.FromRgb(180, 107, 8))
-        : new SolidColorBrush(Color.FromRgb(23, 131, 92));
+        ? new SolidColorBrush(Color.FromRgb(240, 179, 90))
+        : new SolidColorBrush(Color.FromRgb(67, 193, 141));
 
     public bool IsSelected
     {
