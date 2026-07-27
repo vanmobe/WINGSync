@@ -89,7 +89,7 @@ foreach ($vendorFile in $expectedVendorHashes.GetEnumerator()) {
         $vendorFile.Value,
         [System.StringComparison]::OrdinalIgnoreCase)
     if (-not $hashMatches -and $vendorFile.Key.EndsWith('.h', [System.StringComparison]::OrdinalIgnoreCase)) {
-        $normalizedContent = (Get-Content -LiteralPath $vendorPath -Raw) -replace "`r`n?", "`n"
+        $normalizedContent = (Get-Content -LiteralPath $vendorPath -Raw) -replace "`r`n|`r|`n", "`n"
         $normalizedHash = [System.Convert]::ToHexString(
             [System.Security.Cryptography.SHA256]::HashData(
                 [System.Text.Encoding]::UTF8.GetBytes($normalizedContent)))
