@@ -85,20 +85,19 @@ foreach ($vendorFile in $expectedVendorHashes.GetEnumerator()) {
     }
 
     $actualVendorHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $vendorPath).Hash
-    if (-not $actualVendorHash.Equals(
+    $hashMatches = $actualVendorHash.Equals(
+        $vendorFile.Value,
+        [System.StringComparison]::OrdinalIgnoreCase)
+    if (-not $hashMatches -and $vendorFile.Key.EndsWith('.h', [System.StringComparison]::OrdinalIgnoreCase)) {
+        $normalizedContent = (Get-Content -LiteralPath $vendorPath -Raw) -replace "`r`n?", "`n"
+        $normalizedHash = [System.Convert]::ToHexString(
+            [System.Security.Cryptography.SHA256]::HashData(
+                [System.Text.Encoding]::UTF8.GetBytes($normalizedContent)))
+        $hashMatches = $normalizedHash.Equals(
             $vendorFile.Value,
-            [System.StringComparison]::OrdinalIgnoreCase)) {
-        if ($vendorFile.Key.EndsWith('.h', [System.StringComparison]::OrdinalIgnoreCase)) {
-            $normalizedContent = (Get-Content -LiteralPath $vendorPath -Raw).Replace("`r`n", "`n")
-            $normalizedHash = [System.Convert]::ToHexString(
-                [System.Security.Cryptography.SHA256]::HashData(
-                    [System.Text.Encoding]::UTF8.GetBytes($normalizedContent)))
-            if ($normalizedHash.Equals(
-                    $vendorFile.Value,
-                    [System.StringComparison]::OrdinalIgnoreCase)) {
-                continue
-            }
-        }
+            [System.StringComparison]::OrdinalIgnoreCase)
+    }
+    if (-not $hashMatches) {
         throw "Vendored WAPI file differs from its reviewed exact copy: $($vendorFile.Key)"
     }
 }
