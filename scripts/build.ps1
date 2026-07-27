@@ -89,11 +89,19 @@ foreach ($vendorFile in $expectedVendorHashes.GetEnumerator()) {
         $vendorFile.Value,
         [System.StringComparison]::OrdinalIgnoreCase)
     if (-not $hashMatches -and $vendorFile.Key.EndsWith('.h', [System.StringComparison]::OrdinalIgnoreCase)) {
-        $normalizedContent = (Get-Content -LiteralPath $vendorPath -Raw) -replace "`r`n|`r|`n", "`n"
-        $normalizedHash = [System.Convert]::ToHexString(
+        $content = Get-Content -LiteralPath $vendorPath -Raw
+        $normalizedLfContent = $content -replace "`r`n|`r|`n", "`n"
+        $normalizedLfHash = [System.Convert]::ToHexString(
             [System.Security.Cryptography.SHA256]::HashData(
-                [System.Text.Encoding]::UTF8.GetBytes($normalizedContent)))
-        $hashMatches = $normalizedHash.Equals(
+                [System.Text.Encoding]::UTF8.GetBytes($normalizedLfContent)))
+        $normalizedCrlfContent = $content -replace "`r`n|`r|`n", "`r`n"
+        $normalizedCrlfHash = [System.Convert]::ToHexString(
+            [System.Security.Cryptography.SHA256]::HashData(
+                [System.Text.Encoding]::UTF8.GetBytes($normalizedCrlfContent)))
+        $hashMatches = $normalizedLfHash.Equals(
+            $vendorFile.Value,
+            [System.StringComparison]::OrdinalIgnoreCase) -or
+            $normalizedCrlfHash.Equals(
             $vendorFile.Value,
             [System.StringComparison]::OrdinalIgnoreCase)
     }
