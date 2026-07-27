@@ -100,7 +100,8 @@ foreach ($vendorFile in $expectedVendorHashes.GetEnumerator()) {
             }
         }
         $lfBytes = $lfList.ToArray()
-        $crlfList = [System.Collections.Generic.List[byte]]::new($lfBytes.Length)
+        # $lfBytes contains no 0x0D bytes; each 0x0A will be expanded to 0x0D 0x0A.
+        $crlfList = [System.Collections.Generic.List[byte]]::new($lfBytes.Length + 128)
         foreach ($b in $lfBytes) {
             if ($b -eq 0x0A) { $crlfList.Add(0x0D) }
             $crlfList.Add($b)
