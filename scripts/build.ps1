@@ -91,10 +91,9 @@ foreach ($vendorFile in $expectedVendorHashes.GetEnumerator()) {
     if (-not $hashMatches -and $vendorFile.Key.EndsWith('.h', [System.StringComparison]::OrdinalIgnoreCase)) {
         $content = Get-Content -LiteralPath $vendorPath -Raw
         $canonicalLfContent = $content.Replace("`r`n", "`n").Replace("`r", "`n")
-        $normalizedLfContent = $canonicalLfContent
         $normalizedLfHash = [System.Convert]::ToHexString(
             [System.Security.Cryptography.SHA256]::HashData(
-                [System.Text.Encoding]::UTF8.GetBytes($normalizedLfContent)))
+                [System.Text.Encoding]::UTF8.GetBytes($canonicalLfContent)))
         $normalizedCrlfContent = $canonicalLfContent.Replace("`n", "`r`n")
         $normalizedCrlfHash = [System.Convert]::ToHexString(
             [System.Security.Cryptography.SHA256]::HashData(
@@ -103,8 +102,8 @@ foreach ($vendorFile in $expectedVendorHashes.GetEnumerator()) {
             $vendorFile.Value,
             [System.StringComparison]::OrdinalIgnoreCase) -or
             $normalizedCrlfHash.Equals(
-            $vendorFile.Value,
-            [System.StringComparison]::OrdinalIgnoreCase)
+                $vendorFile.Value,
+                [System.StringComparison]::OrdinalIgnoreCase)
     }
     if (-not $hashMatches) {
         throw "Vendored WAPI file differs from its reviewed exact copy: $($vendorFile.Key)"
