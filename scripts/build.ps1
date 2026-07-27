@@ -89,15 +89,29 @@ foreach ($vendorFile in $expectedVendorHashes.GetEnumerator()) {
         $vendorFile.Value,
         [System.StringComparison]::OrdinalIgnoreCase)
     if (-not $hashMatches -and $vendorFile.Key.EndsWith('.h', [System.StringComparison]::OrdinalIgnoreCase)) {
-        $content = Get-Content -LiteralPath $vendorPath -Raw
-        $normalizedLfContent = $content.Replace("`r`n", "`n").Replace("`r", "`n")
-        $normalizedLfHash = [System.Convert]::ToHexString(
-            [System.Security.Cryptography.SHA256]::HashData(
-                [System.Text.Encoding]::UTF8.GetBytes($normalizedLfContent)))
-        $normalizedCrlfContent = $normalizedLfContent.Replace("`n", "`r`n")
-        $normalizedCrlfHash = [System.Convert]::ToHexString(
-            [System.Security.Cryptography.SHA256]::HashData(
-                [System.Text.Encoding]::UTF8.GetBytes($normalizedCrlfContent)))
+        $rawBytes = [System.IO.File]::ReadAllBytes($vendorPath)
+        $lfList = [System.Collections.Generic.List[byte]]::new($rawBytes.Length)
+        for ($i = 0; $i -lt $rawBytes.Length; $i++) {
+            if ($rawBytes[$i] -eq 0x0D) {
+                if ($i + 1 -lt $rawBytes.Length -and $rawBytes[$i + 1] -eq 0x0A) { $i++ }
+                $lfList.Add(0x0A)
+            } else {
+                $lfList.Add($rawBytes[$i])
+            }
+        }
+        $lfBytes = $lfList.ToArray()
+        $crlfList = [System.Collections.Generic.List[byte]]::new($lfBytes.Length)
+        foreach ($b in $lfBytes) {
+            if ($b -eq 0x0A) { $crlfList.Add(0x0D) }
+            $crlfList.Add($b)
+        }
+        $sha256 = [System.Security.Cryptography.SHA256]::Create()
+        try {
+            $normalizedLfHash = [BitConverter]::ToString($sha256.ComputeHash($lfBytes)).Replace('-', '')
+            $normalizedCrlfHash = [BitConverter]::ToString($sha256.ComputeHash($crlfList.ToArray())).Replace('-', '')
+        } finally {
+            $sha256.Dispose()
+        }
         $hashMatches = $normalizedLfHash.Equals(
             $vendorFile.Value,
             [System.StringComparison]::OrdinalIgnoreCase) -or
