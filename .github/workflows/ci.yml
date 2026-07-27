@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, copilot/top-status-bar-orchestration]
   pull_request:
     branches: [main]
 
@@ -29,6 +29,19 @@ jobs:
 
       - name: Build managed solution
         run: dotnet build WingSync.slnx -c Release --no-restore
+
+      - name: Capture user guide screenshots
+        run: >-
+          dotnet run --project tests/WingSync.UiTests -c Release --no-build --
+          --app src/WingSync.App/bin/Release/net10.0-windows/WingSync.exe
+          --artifacts artifacts/ui
+          --capture-guide artifacts/user-guide
+
+      - name: Upload user guide screenshots
+        uses: actions/upload-artifact@v4.6.2
+        with:
+          name: user-guide-screenshots
+          path: artifacts/user-guide
 
       - name: Run core tests
         run: dotnet run --project tests/WingSync.Core.Tests -c Release --no-build

@@ -70,6 +70,7 @@ internal sealed class UiTestEnvironment
         string? app = null;
         string? artifacts = null;
         string? filter = null;
+        string? guideScreenshots = null;
         for (var index = 0; index < arguments.Count; index++)
         {
             switch (arguments[index])
@@ -83,6 +84,9 @@ internal sealed class UiTestEnvironment
                 case "--filter" when index + 1 < arguments.Count:
                     filter = arguments[++index];
                     break;
+                case "--capture-guide" when index + 1 < arguments.Count:
+                    guideScreenshots = Path.GetFullPath(arguments[++index]);
+                    break;
                 default:
                     throw new ArgumentException(
                         string.Create(
@@ -95,7 +99,8 @@ internal sealed class UiTestEnvironment
         {
             throw new ArgumentException(
                 "Usage: WingSync.UiTests --app <WingSync.exe> "
-                + "[--artifacts <directory>] [--filter <name>]");
+                + "[--artifacts <directory>] [--filter <name>] "
+                + "[--capture-guide <directory>]");
         }
 
         var runId = string.Create(
@@ -105,14 +110,15 @@ internal sealed class UiTestEnvironment
             Path.GetTempPath(),
             "WingSync.UiTests",
             runId);
-        return new UiTestOptions(app, artifacts, filter);
+        return new UiTestOptions(app, artifacts, filter, guideScreenshots);
     }
 }
 
 internal sealed record UiTestOptions(
     string ApplicationPath,
     string ArtifactsDirectory,
-    string? Filter);
+    string? Filter,
+    string? GuideScreenshotsDirectory);
 
 internal sealed class UiScenarioContext : IDisposable
 {

@@ -17,6 +17,14 @@ internal static class Program
             var environment = new UiTestEnvironment(
                 options.ApplicationPath,
                 options.ArtifactsDirectory);
+            if (options.GuideScreenshotsDirectory is not null)
+            {
+                GuideScreenshotScenarios.Capture(
+                    environment,
+                    options.GuideScreenshotsDirectory);
+                return 0;
+            }
+
             var suite = new TestSuite();
             UiScenarios.Register(suite, environment);
             return suite.Run(options.Filter);
