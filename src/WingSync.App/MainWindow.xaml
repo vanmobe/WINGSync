@@ -75,8 +75,6 @@
                 BorderThickness="0,0,0,1">
             <Grid Margin="14,8">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="68" />
-                    <ColumnDefinition Width="12" />
                     <ColumnDefinition Width="128" />
                     <ColumnDefinition Width="14" />
                     <ColumnDefinition Width="*" />
@@ -86,21 +84,7 @@
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
-                <Border Width="68"
-                        Height="68"
-                        Background="#252525"
-                        BorderBrush="{StaticResource LineBrush}"
-                        BorderThickness="1"
-                        CornerRadius="9"
-                        ClipToBounds="True"
-                        automation:AutomationProperties.Name="WingSync-logo">
-                    <Image Source="/WingSync;component/Assets/wingsync-logo.png"
-                           Stretch="UniformToFill"
-                           automation:AutomationProperties.AutomationId="WingSyncLogo"
-                           automation:AutomationProperties.Name="WingSync logo, WING in white and SYNC in yellow" />
-                </Border>
-
-                <StackPanel Grid.Column="2" VerticalAlignment="Center">
+                <StackPanel VerticalAlignment="Center">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="WING"
                                    Foreground="{StaticResource InkBrush}"
@@ -119,7 +103,7 @@
                                Margin="0,3,0,0" />
                 </StackPanel>
 
-                <Border Grid.Column="4"
+                <Border Grid.Column="2"
                         Background="{StaticResource RaisedSurfaceBrush}"
                         BorderBrush="{StaticResource LineBrush}"
                         BorderThickness="1"
@@ -181,7 +165,7 @@
                     </Grid>
                 </Border>
 
-                <Button Grid.Column="6"
+                <Button Grid.Column="4"
                         Content="Stop"
                         Command="{Binding StopCommand}"
                         IsEnabled="{Binding IsRunning}"
@@ -194,7 +178,7 @@
                         automation:AutomationProperties.Name="Immediately block new synchronization writes"
                         automation:AutomationProperties.AcceleratorKey="Ctrl+Shift+S"
                         automation:AutomationProperties.HelpText="Immediately blocks new writes; an already-sent transaction is safely read back first and then both connections are disconnected. Shortcut Ctrl+Shift+S." />
-                <Button Grid.Column="8"
+                <Button Grid.Column="6"
                         Content="{Binding StartButtonText}"
                         Command="{Binding StartCommand}"
                         IsEnabled="{Binding CanPrimaryAction}"

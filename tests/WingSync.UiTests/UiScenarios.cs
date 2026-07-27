@@ -124,6 +124,9 @@ internal static class UiScenarios
         AssertEx.True(
             visibleProblem is null || visibleProblem.Current.IsOffscreen,
             "A fresh demo launch must not show a blocking-problem banner.");
+        AssertEx.True(
+            app.TryFindById("WingSyncLogo") is null,
+            "The header must not show the WingSync logo.");
 
         foreach (var id in new[]
                  {
@@ -133,7 +136,6 @@ internal static class UiScenarios
                      "NavigationActivity",
                      "NavigationSettings",
                      "HeaderTitleText",
-                     "WingSyncLogo",
                      "DirectionSummaryText",
                      "OverallStatusText",
                      "RunModeText",
