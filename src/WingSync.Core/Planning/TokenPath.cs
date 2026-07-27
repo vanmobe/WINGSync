@@ -57,6 +57,9 @@ public sealed class TokenPath : IEquatable<TokenPath>
         }
 
         var canonical = value.Trim();
+
+        // Require a single rooted representation. Rejecting alternate spellings
+        // keeps dictionary keys, fingerprints, and scope matching deterministic.
         if (canonical.Length < 2
             || canonical[0] != '/'
             || canonical[^1] == '/'
@@ -66,6 +69,9 @@ public sealed class TokenPath : IEquatable<TokenPath>
         }
 
         var parsedSegments = canonical[1..].Split('/');
+
+        // Dot segments and whitespace could change meaning across consumers, so
+        // they are rejected rather than normalized silently.
         if (parsedSegments.Length == 0
             || parsedSegments.Any(static segment =>
                 segment.Length == 0

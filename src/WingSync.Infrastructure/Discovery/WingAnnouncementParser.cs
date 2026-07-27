@@ -45,6 +45,8 @@ public static class WingAnnouncementParser
         var announcement = Encoding.ASCII.GetString(payload);
         var fields = announcement.Split(',', StringSplitOptions.None);
 
+        // Trust the datagram source, not merely advertised text: requiring the
+        // two addresses to match prevents stale or forwarded announcements.
         if (fields.Length != 6
             || !string.Equals(fields[0], "WING", StringComparison.Ordinal)
             || !TryParseCanonicalIPv4(fields[1], out var advertisedAddress)
@@ -92,6 +94,8 @@ public static class WingAnnouncementParser
             || address.Equals(IPAddress.Broadcast)
             || IsIPv4Multicast(address))
         {
+            // Canonical text rejects ambiguous shorthand such as leading-zero
+            // octets before the address is persisted as a console identity.
             address = null;
             return false;
         }

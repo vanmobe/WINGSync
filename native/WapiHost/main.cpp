@@ -600,6 +600,8 @@ bool parseSetBatch(
     std::vector<wtoken> seenTokens;
     seenTokens.reserve(itemCount);
 
+    // Validate the complete batch before constructing any WAPI updates. A single
+    // malformed or duplicate token rejects the command without a partial write.
     for (std::size_t itemIndex = 0; itemIndex < itemCount; ++itemIndex)
     {
         const std::size_t fieldIndex = 2U + itemIndex * 3U;
@@ -820,6 +822,8 @@ public:
             return;
         }
 
+        // Keepalive and event draining share the host thread with commands. This
+        // preserves the vendor library's single-threaded call boundary.
         const int keepAliveResult = wKeepAlive();
         if (keepAliveResult != WSUCCESS && keepAliveResult != WZERO)
         {
@@ -1440,6 +1444,9 @@ int runHost()
 
     CommandQueue queue;
     std::atomic_bool stopReader = false;
+
+    // A dedicated reader prevents blocking stdin from starving WAPI keepalive and
+    // event polling. It never calls the vendor library; it only fills this queue.
     std::thread reader([&queue, &stopReader]
     {
         std::string line;
@@ -1488,6 +1495,8 @@ int runHost()
                 inputEnded = queue.inputEnded && queue.lines.empty();
             }
 
+            // Limit command work per turn so a busy managed client cannot starve
+            // console events indefinitely.
             for (std::string& line : pending)
             {
                 if (!host.handle(std::move(line)))

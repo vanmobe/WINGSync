@@ -121,6 +121,8 @@ public static class ScopeCatalog
         var segments = path.Segments;
         var section = segments[2];
 
+        // Three-segment channel leaves are controls directly on the channel.
+        // Deeper paths are matched by their processing subtree below.
         if (segments.Count == 3)
         {
             if (CustomLeaves.Contains(section))
@@ -613,6 +615,8 @@ public static class SidechainReferenceMapper
 
         if (source.Type == WingValueType.I)
         {
+            // Native integer sidechain values encode regular input channels only;
+            // values outside that range represent non-channel choices and pass through.
             var integerSourceChannel = source.AsInt32();
             if (integerSourceChannel is < WingChannelLimits.FirstInput or > WingChannelLimits.LastInput)
             {
@@ -637,6 +641,8 @@ public static class SidechainReferenceMapper
                 out var prefix,
                 out var separator))
         {
+            // External sources, self, off, and other named choices are semantic
+            // values rather than channel addresses and must remain unchanged.
             return true;
         }
 

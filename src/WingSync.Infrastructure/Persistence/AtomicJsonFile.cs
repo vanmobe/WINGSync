@@ -20,6 +20,8 @@ internal static class AtomicJsonFile
 
         try
         {
+            // Fully persist a same-directory temporary file before making it
+            // visible. Keeping it on the same volume makes replacement atomic.
             await using (var stream = new FileStream(
                              temporaryPath,
                              FileMode.CreateNew,
@@ -36,6 +38,8 @@ internal static class AtomicJsonFile
             cancellationToken.ThrowIfCancellationRequested();
             if (File.Exists(targetPath))
             {
+                // File.Replace atomically promotes the new bytes and rotates the
+                // previous primary into the caller-provided recovery path.
                 File.Replace(
                     temporaryPath,
                     targetPath,
@@ -75,6 +79,9 @@ internal static class AtomicJsonFile
         using var content = new MemoryStream(
             capacity: (int)Math.Min(stream.Length, maximumBytes));
         var buffer = new byte[16_384];
+
+        // Recheck the bound while streaming because another process may append
+        // after the initial length check.
         while (true)
         {
             var read = await stream.ReadAsync(buffer, cancellationToken).ConfigureAwait(false);

@@ -1005,6 +1005,8 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
         }
         else
         {
+            // First run and failed recovery both start from a deliberately small,
+            // dry-run-safe topology rather than inferring a live configuration.
             ChannelMappings.Add(new ChannelMappingViewModel(1, 1, "Channel 1"));
             AttachMappingHandlers();
             ApplySafeDefaultScopes();
@@ -1058,6 +1060,9 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
             var previousStageSerial =
                 SelectedStageWing?.Wing.SerialNumber ??
                 activeConfiguration?.Monitor.ExpectedSerial;
+
+            // Rebuild the collection but restore assignments by pinned identity;
+            // list position and IP address may change between discovery passes.
             DiscoveredWings.Clear();
             foreach (var wing in result.Wings)
             {
@@ -1314,6 +1319,8 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
 
         try
         {
+            // Persist a safe projection before starting. Session-only live and
+            // high-risk approvals must never survive an application restart.
             await configStore.SaveAsync(CreatePersistedSafeConfiguration(configuration));
             activeConfiguration = configuration;
             ClearProblem();
@@ -1347,6 +1354,8 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
         const int MaximumPreviewChanges = 3;
         for (var attempt = 1; attempt <= MaximumPreviewChanges; attempt++)
         {
+            // Each loop reviews one immutable snapshot. If either console changes,
+            // the coordinator replaces it and this method asks the operator again.
             var preview = coordinator.PendingInitialPreview ??
                 throw new InvalidOperationException(
                     "Live synchronization was waiting without a valid fresh diff preview.");
@@ -1710,6 +1719,8 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
     {
         if (!suppressLiveSafetyReset)
         {
+            // Any topology edit invalidates evidence gathered for the previous
+            // setup and revokes volatile live/high-risk consent.
             connectionTestSucceeded = false;
             hasCompletedDryRun = false;
             var resetToSafeMode = false;
@@ -1987,6 +1998,9 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
                 diagnosticEvent.Code == "PARAMETER_BLOCKED"
                     ? "Blocked"
                     : "Executable"));
+
+        // Diagnostics can arrive off the UI thread, so retain preview details in
+        // a bounded concurrent queue and materialize them only when opening a dialog.
         var count = Interlocked.Increment(ref previewTokenAuditCount);
         while (count > MaximumPreviewAuditEntries &&
                previewTokenAudit.TryDequeue(out _))

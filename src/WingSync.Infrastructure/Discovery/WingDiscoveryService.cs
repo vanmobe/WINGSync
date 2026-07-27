@@ -58,6 +58,8 @@ public sealed class WingDiscoveryService
             CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         timeoutSource.CancelAfter(options.ReplyTimeout);
 
+        // Probe adapters concurrently and keep listening for the complete reply
+        // window; consoles may answer at different speeds on different subnets.
         var adapterTasks = bindings.Select(
             binding => QueryBindingAsync(
                 binding,
@@ -102,6 +104,9 @@ public sealed class WingDiscoveryService
                     }
 
                     var targets = new HashSet<IPAddress>();
+
+                    // Directed broadcast reaches the adapter subnet reliably;
+                    // the global address is an optional fallback and is deduplicated.
                     if (options.IncludeDirectedBroadcast
                         && TryCalculateDirectedBroadcast(
                             unicast.Address,
@@ -167,6 +172,8 @@ public sealed class WingDiscoveryService
             issues,
             cancellationToken);
 
+        // Start receiving before sending so a fast local reply cannot arrive
+        // between probe transmission and listener setup.
         foreach (var target in binding.Targets)
         {
             try
@@ -229,6 +236,9 @@ public sealed class WingDiscoveryService
                 wing.SerialNumber,
                 "\n",
                 wing.IpAddress);
+
+            // A console may answer both directed and global broadcasts. Serial
+            // plus address identifies one announcement without hiding duplicate IPs.
             discovered.TryAdd(key, wing);
         }
     }
