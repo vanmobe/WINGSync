@@ -1,3 +1,4 @@
+using System.IO;
 using System.Windows.Automation;
 
 namespace WingSync.UiTests;
