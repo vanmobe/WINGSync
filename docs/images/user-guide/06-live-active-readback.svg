@@ -3,19 +3,16 @@
 <style>text{fill:#F3F4F6}.label,.muted{fill:#AEB5C2}[fill="#f3f5f8"]{fill:#111316}[fill="#fcfcfa"],[fill="#f8f8f5"]{fill:#16191D}[fill="#f3f3ef"],[fill="#efefea"],[fill="#e8eef5"],[fill="#ebeef2"],[fill="#fafafa"],[fill="#f1f2ee"]{fill:#20242A}rect[fill="#fff"],rect[fill="#ffffff"]{fill:#1A1D22}[fill="#fff2a8"]{fill:#3C350B}[fill="#e2f4ed"]{fill:#153528}[fill="#e3f1fb"]{fill:#152B3D}[fill="#fff3e2"]{fill:#382715}[fill="#fde8e9"]{fill:#3B1D22}[fill="#dfe4ec"]{fill:#0D0F12}[fill="#17835c"]{fill:#43C18D}[fill="#0b78d0"]{fill:#4EA8DE}[fill="#be3b43"]{fill:#FF6B72}[fill="#b46b08"],[fill="#d57a00"]{fill:#F0B35A}[fill="#a58c00"]{fill:#E5C600}[stroke="#d7d7d1"],[stroke="#deded8"],[stroke="#d4d4ce"],[stroke="#dce1e8"],[stroke="#b8c1ce"],[stroke="#e9ecf1"],[stroke="#d9dad4"],[stroke="#687386"],[stroke="#111111"]{stroke:#343941}[stroke="#e4c400"]{stroke:#D8BB16}[stroke="#f0c67f"]{stroke:#8A5B24}[style*="fill:#172033"]{fill:#F3F4F6!important}[style*="fill:#5c667a"]{fill:#AEB5C2!important}[style*="fill:#17835c"]{fill:#43C18D!important}[style*="fill:#0b78d0"]{fill:#4EA8DE!important}[style*="fill:#be3b43"]{fill:#FF6B72!important}[style*="fill:#b46b08"]{fill:#F0B35A!important}[style*="fill:#a58c00"]{fill:#E5C600!important}[style*="fill:#76531f"]{fill:#FFD499!important}[style*="fill:#ecece8"]{fill:#F3F4F6!important}</style>
 <rect x="0" y="0" width="1240" height="800" rx="0" fill="#f3f5f8" stroke="#f3f5f8" stroke-width="1"/>
 <rect x="0" y="0" width="1240" height="88" rx="0" fill="#fcfcfa" stroke="#d7d7d1" stroke-width="1"/>
-<rect x="14" y="10" width="68" height="68" rx="9" fill="#252525" stroke="#111111" stroke-width="1"/>
-<text x="30" y="40" class="bold" style="fill:#fff;font-size:13px;">WING</text>
-<text x="30" y="58" class="bold" style="fill:#e5c600;font-size:13px;">SYNC</text>
-<text x="102" y="37" class="bold" style="font-size:19px;">WING</text>
-<text x="160" y="37" class="bold" style="fill:#e5c600;font-size:19px;">SYNC</text>
-<text x="104" y="57" class="label" style="">FOH / MONITOR LINK</text>
-<rect x="224" y="22" width="790" height="44" rx="7" fill="#f3f3ef" stroke="#deded8" stroke-width="1"/>
-<text x="238" y="40" class="label" style="">CONSOLEFLOW</text>
-<text x="238" y="58" class="bold" style="font-size:13px;">FOH ↦ STAGE</text>
-<line x1="470" y1="26" x2="470" y2="62" stroke="#d4d4ce" stroke-width="1"/>
-<text x="492" y="40" class="label" style="">SESSION STATUS</text>
-<circle cx="505" cy="54" r="4" fill="#17835c" stroke="#17835c"/>
-<text x="517" y="58" class="bold" style="font-size:13px;">Live active</text>
+<text x="14" y="37" class="bold" style="font-size:19px;">WING</text>
+<text x="72" y="37" class="bold" style="fill:#e5c600;font-size:19px;">SYNC</text>
+<text x="16" y="57" class="label" style="">FOH / MONITOR LINK</text>
+<rect x="156" y="22" width="858" height="44" rx="7" fill="#f3f3ef" stroke="#deded8" stroke-width="1"/>
+<text x="170" y="40" class="label" style="">CONSOLEFLOW</text>
+<text x="170" y="58" class="bold" style="font-size:13px;">FOH ↦ STAGE</text>
+<line x1="436" y1="26" x2="436" y2="62" stroke="#d4d4ce" stroke-width="1"/>
+<text x="458" y="40" class="label" style="">SESSION STATUS</text>
+<circle cx="471" cy="54" r="4" fill="#17835c" stroke="#17835c"/>
+<text x="483" y="58" class="bold" style="font-size:13px;">Live active</text>
 <line x1="750" y1="26" x2="750" y2="62" stroke="#d4d4ce" stroke-width="1"/>
 <text x="773" y="40" class="label" style="">MODE</text>
 <rect x="773" y="45" width="210" height="22" rx="11" fill="#e2f4ed" stroke="#e2f4ed" stroke-width="1"/>
