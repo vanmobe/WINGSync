@@ -85,9 +85,42 @@ foreach ($vendorFile in $expectedVendorHashes.GetEnumerator()) {
     }
 
     $actualVendorHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $vendorPath).Hash
-    if (-not $actualVendorHash.Equals(
+    $hashMatches = $actualVendorHash.Equals(
+        $vendorFile.Value,
+        [System.StringComparison]::OrdinalIgnoreCase)
+    if (-not $hashMatches -and $vendorFile.Key.EndsWith('.h', [System.StringComparison]::OrdinalIgnoreCase)) {
+        $rawBytes = [System.IO.File]::ReadAllBytes($vendorPath)
+        $lfList = [System.Collections.Generic.List[byte]]::new($rawBytes.Length)
+        for ($i = 0; $i -lt $rawBytes.Length; $i++) {
+            if ($rawBytes[$i] -eq 0x0D) {
+                if ($i + 1 -lt $rawBytes.Length -and $rawBytes[$i + 1] -eq 0x0A) { $i++ }
+                $lfList.Add(0x0A)
+            } else {
+                $lfList.Add($rawBytes[$i])
+            }
+        }
+        $lfBytes = $lfList.ToArray()
+        # $lfBytes contains no 0x0D bytes; each 0x0A will be expanded to 0x0D 0x0A.
+        $crlfList = [System.Collections.Generic.List[byte]]::new($lfBytes.Length + 128)
+        foreach ($b in $lfBytes) {
+            if ($b -eq 0x0A) { $crlfList.Add(0x0D) }
+            $crlfList.Add($b)
+        }
+        $sha256 = [System.Security.Cryptography.SHA256]::Create()
+        try {
+            $normalizedLfHash = [BitConverter]::ToString($sha256.ComputeHash($lfBytes)).Replace('-', '')
+            $normalizedCrlfHash = [BitConverter]::ToString($sha256.ComputeHash($crlfList.ToArray())).Replace('-', '')
+        } finally {
+            $sha256.Dispose()
+        }
+        $hashMatches = $normalizedLfHash.Equals(
             $vendorFile.Value,
-            [System.StringComparison]::OrdinalIgnoreCase)) {
+            [System.StringComparison]::OrdinalIgnoreCase) -or
+            $normalizedCrlfHash.Equals(
+                $vendorFile.Value,
+                [System.StringComparison]::OrdinalIgnoreCase)
+    }
+    if (-not $hashMatches) {
         throw "Vendored WAPI file differs from its reviewed exact copy: $($vendorFile.Key)"
     }
 }
