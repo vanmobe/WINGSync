@@ -4,6 +4,16 @@ on:
   push:
     tags:
       - 'v[0-9]*.[0-9]*.[0-9]*'
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Release tag to create or update, for example v0.1.0'
+        required: true
+        default: 'v0.1.0'
+      source_ref:
+        description: 'Source ref to build; leave blank to build the selected workflow ref'
+        required: false
+        default: ''
 
 permissions:
   contents: write
@@ -11,9 +21,13 @@ permissions:
 jobs:
   build-release:
     runs-on: windows-2022
+    env:
+      RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref_name }}
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && (inputs.source_ref || github.ref_name) || github.ref }}
 
       - name: Set up .NET SDK
         uses: actions/setup-dotnet@v4
@@ -22,24 +36,32 @@ jobs:
 
       - name: Build release package
         shell: pwsh
-        run: .\scripts\build.ps1 -Configuration Release -SkipTests
+        run: |
+          $releaseVersion = '${{ env.RELEASE_TAG }}' -replace '^v', ''
+          .\scripts\build.ps1 -Configuration Release -SkipTests -Version $releaseVersion
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
           if-no-files-found: error
-          name: WingSync-${{ github.ref_name }}
+          name: WingSync-${{ env.RELEASE_TAG }}
           path: |
             artifacts/WingSync-portable-win-x64-*.zip
             artifacts/WingSync-portable-win-x64-*.zip.sha256
+            artifacts/WingSync-win-x64-*/WingSync.exe
+            artifacts/WingSync-win-x64-*/WingSync.exe.sha256
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          name: WingSync ${{ github.ref_name }}
+          tag_name: ${{ env.RELEASE_TAG }}
+          name: WingSync ${{ env.RELEASE_TAG }}
           fail_on_unmatched_files: true
+          overwrite_files: true
           files: |
             artifacts/WingSync-portable-win-x64-*.zip
             artifacts/WingSync-portable-win-x64-*.zip.sha256
+            artifacts/WingSync-win-x64-*/WingSync.exe
+            artifacts/WingSync-win-x64-*/WingSync.exe.sha256
           generate_release_notes: true
           draft: false
           prerelease: false

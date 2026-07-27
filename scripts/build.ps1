@@ -2,6 +2,8 @@
 param(
     [ValidateSet('Debug', 'Release')]
     [string]$Configuration = 'Release',
+    [ValidatePattern('^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$')]
+    [string]$Version = '0.1.0',
     [switch]$SkipTests
 )
 
@@ -31,7 +33,11 @@ function Assert-LastExitCode {
 
 $nativeBuild = Join-Path $repoRoot 'build\native'
 $artifactRoot = Join-Path $repoRoot 'artifacts'
-$version = '1.0.0'
+$version = $Version
+if ($version -notmatch '^(\d+)\.(\d+)\.(\d+)(?:-[0-9A-Za-z.-]+)?$') {
+    throw "Version must be a semantic version like 0.1.0 or 0.1.0-preview. Actual: $version"
+}
+$assemblyFileVersion = "$($Matches[1]).$($Matches[2]).$($Matches[3]).0"
 if ($Configuration -eq 'Release' -and -not $SkipTests) {
     $packageQualifier = '-internal-evaluation'
     $releaseStatus = 'internal-evaluation-unsigned'
@@ -181,6 +187,9 @@ Assert-LastExitCode 'Managed restore'
     -c $Configuration `
     --no-restore `
     -p:Version=$version `
+    -p:VersionPrefix=$version `
+    -p:AssemblyVersion=$assemblyFileVersion `
+    -p:FileVersion=$assemblyFileVersion `
     -p:InformationalVersion=$informationalVersion
 Assert-LastExitCode 'Managed build'
 
@@ -203,6 +212,9 @@ Assert-LastExitCode 'Windows runtime-pack restore'
     -p:IncludeNativeLibrariesForSelfExtract=true `
     -p:EnableCompressionInSingleFile=true `
     -p:Version=$version `
+    -p:VersionPrefix=$version `
+    -p:AssemblyVersion=$assemblyFileVersion `
+    -p:FileVersion=$assemblyFileVersion `
     -p:InformationalVersion=$informationalVersion `
     -o $publishDir
 Assert-LastExitCode 'Self-contained publish'
@@ -353,6 +365,10 @@ $buildManifest = [ordered]@{
 }
 $buildManifest | ConvertTo-Json -Depth 6 |
     Set-Content -LiteralPath (Join-Path $publishDir 'BUILD-MANIFEST.json') -Encoding UTF8
+
+$appHash = Get-FileHash -Algorithm SHA256 -LiteralPath $publishedApp
+"$($appHash.Hash.ToLowerInvariant())  WingSync.exe" |
+    Set-Content -LiteralPath (Join-Path $publishDir 'WingSync.exe.sha256') -Encoding ASCII
 
 $inventoryPath = Join-Path $publishDir 'PACKAGE-CONTENTS.sha256'
 $inventoryEntries = Get-ChildItem -LiteralPath $publishDir -Recurse -File |
