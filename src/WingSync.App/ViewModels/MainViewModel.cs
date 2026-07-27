@@ -837,6 +837,13 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
                             ? 3
                             : 4;
             var names = new[] { "Setup", "Connection", "Dry run", "Review", "Live" };
+            var automationIds = new[] {
+                "WorkflowStageSetup",
+                "WorkflowStageConnection",
+                "WorkflowStageDryrun",
+                "WorkflowStageReview",
+                "WorkflowStageLive",
+            };
             var complete = new[] {
                 setupComplete,
                 connectionComplete,
@@ -875,13 +882,13 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
                                 : "Upcoming";
                 steps[index] = new WorkflowStepViewModel(
                     names[index],
-                    isComplete ? "✓" : (index + 1).ToString(CultureInfo.CurrentCulture),
+                    isComplete ? "✓" : (index + 1).ToString(CultureInfo.InvariantCulture),
                     status,
                     background,
                     foreground,
                     isComplete ? Green : GraySoft,
                     index == names.Length - 1 ? Visibility.Collapsed : Visibility.Visible,
-                    $"WorkflowStage{names[index].Replace(" ", string.Empty, StringComparison.Ordinal)}");
+                    automationIds[index]);
             }
 
             return steps;
