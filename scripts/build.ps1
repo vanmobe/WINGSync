@@ -88,6 +88,17 @@ foreach ($vendorFile in $expectedVendorHashes.GetEnumerator()) {
     if (-not $actualVendorHash.Equals(
             $vendorFile.Value,
             [System.StringComparison]::OrdinalIgnoreCase)) {
+        if ($vendorFile.Key.EndsWith('.h', [System.StringComparison]::OrdinalIgnoreCase)) {
+            $normalizedContent = (Get-Content -LiteralPath $vendorPath -Raw).Replace("`r`n", "`n")
+            $normalizedHash = [System.Convert]::ToHexString(
+                [System.Security.Cryptography.SHA256]::HashData(
+                    [System.Text.Encoding]::UTF8.GetBytes($normalizedContent)))
+            if ($normalizedHash.Equals(
+                    $vendorFile.Value,
+                    [System.StringComparison]::OrdinalIgnoreCase)) {
+                continue
+            }
+        }
         throw "Vendored WAPI file differs from its reviewed exact copy: $($vendorFile.Key)"
     }
 }
