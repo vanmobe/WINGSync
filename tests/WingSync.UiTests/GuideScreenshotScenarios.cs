@@ -82,6 +82,10 @@ internal static class GuideScreenshotScenarios
 
         app.Navigate("NavigationSync", "Configure synchronization");
         app.SetText("FohIpTextBox", string.Empty);
+        app.WaitForElementName(
+            "StartButton",
+            "Open setup",
+            TimeSpan.FromSeconds(5));
         app.Invoke("TestConnectionsButton");
         app.Navigate("NavigationStatus", "Status");
         app.WaitFor(
