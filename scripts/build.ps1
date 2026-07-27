@@ -3,7 +3,7 @@ param(
     [ValidateSet('Debug', 'Release')]
     [string]$Configuration = 'Release',
     [ValidatePattern('^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$')]
-    [string]$Version = '0.1.0',
+    [string]$Version = '1.0.0',
     [switch]$SkipTests
 )
 
@@ -35,6 +35,9 @@ $nativeBuild = Join-Path $repoRoot 'build\native'
 $artifactRoot = Join-Path $repoRoot 'artifacts'
 $version = $Version
 $versionParts = $version.Split('-', 2)[0].Split('.')
+if ($versionParts.Count -ne 3) {
+    throw "Version must have major, minor, and patch components. Actual: $version"
+}
 $assemblyFileVersion = "$($versionParts[0]).$($versionParts[1]).$($versionParts[2]).0"
 if ($Configuration -eq 'Release' -and -not $SkipTests) {
     $packageQualifier = '-internal-evaluation'

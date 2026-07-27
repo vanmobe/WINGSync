@@ -9,7 +9,6 @@ on:
       release_tag:
         description: 'Release tag to create or update, for example v0.1.0'
         required: true
-        default: 'v0.1.0'
       source_ref:
         description: 'Source ref to build; leave blank to build the selected workflow ref'
         required: false
@@ -56,7 +55,6 @@ jobs:
           tag_name: ${{ env.RELEASE_TAG }}
           name: WingSync ${{ env.RELEASE_TAG }}
           fail_on_unmatched_files: true
-          overwrite_files: true
           files: |
             artifacts/WingSync-portable-win-x64-*.zip
             artifacts/WingSync-portable-win-x64-*.zip.sha256
