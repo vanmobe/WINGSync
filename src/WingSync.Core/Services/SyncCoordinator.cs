@@ -102,8 +102,14 @@ public sealed class SyncCoordinator : IAsyncDisposable
     private readonly ISyncObserver observer;
     private readonly IClock clock;
     private readonly WritePlanner planner = new();
+
+    // Lifecycle operations serialize separately from reconciliation: Start/Stop
+    // own lifecycleGate, while every snapshot or write transaction owns reconcileGate.
     private readonly SemaphoreSlim lifecycleGate = new(1, 1);
     private readonly SemaphoreSlim reconcileGate = new(1, 1);
+
+    // These mirrors are observational only. desiredTargets is the authoritative
+    // target intent used to detect drift after a plan has been accepted.
     private readonly ConcurrentDictionary<string, WingValue> sourceState =
         new(StringComparer.Ordinal);
     private readonly ConcurrentDictionary<string, WingValue> targetState =
@@ -114,6 +120,9 @@ public sealed class SyncCoordinator : IAsyncDisposable
         new(StringComparer.Ordinal);
     private readonly ConcurrentDictionary<string, EchoFingerprint> echoFingerprints =
         new(StringComparer.Ordinal);
+
+    // Event callbacks cannot await the reconciliation gate. They stage changes
+    // under this short lock until a coherent snapshot-to-stream hand-off occurs.
     private readonly object eventIntakeSync = new();
     private readonly Dictionary<string, BufferedParameterEvent> deferredSourceEvents =
         new(StringComparer.Ordinal);
@@ -129,6 +138,8 @@ public sealed class SyncCoordinator : IAsyncDisposable
     private readonly object latencySync = new();
     private readonly Queue<double> recentLatencies = new();
 
+    // A session cancellation source owns one complete connection epoch and all
+    // worker tasks started for it. Reconnect replaces the transports, not the workers.
     private CancellationTokenSource? sessionCancellation;
     private Channel<EngineWork>? workChannel;
     private Task? workerTask;
@@ -244,6 +255,9 @@ public sealed class SyncCoordinator : IAsyncDisposable
             liveWritesArmed = !configuration.Safety.DryRun && confirmLiveInitialSync;
             safetyPaused = false;
             sessionCancellation = new CancellationTokenSource();
+
+            // Multiple session callbacks produce work, but one consumer performs
+            // planning and writes so console mutations remain strictly ordered.
             workChannel = Channel.CreateBounded<EngineWork>(
                 new BoundedChannelOptions(QueueCapacity)
                 {
@@ -263,6 +277,8 @@ public sealed class SyncCoordinator : IAsyncDisposable
             {
                 ChangeStatus(SyncCoordinatorState.Connecting, "Identifying and connecting consoles.");
 
+                // Verify discovery identity before opening transports, then verify
+                // again through each connected console before any state is trusted.
                 await VerifyIdentitiesAsync(cancellationToken).ConfigureAwait(false);
                 await ConnectBothAsync(cancellationToken).ConfigureAwait(false);
                 await VerifyConnectedIdentitiesAsync(cancellationToken).ConfigureAwait(false);
@@ -283,6 +299,8 @@ public sealed class SyncCoordinator : IAsyncDisposable
                 workerTask = ProcessWorkAsync(sessionCancellation.Token);
                 healthTask = HealthLoopAsync(sessionCancellation.Token);
 
+                // A live start without explicit approval stops at the exact fresh
+                // diff; event intake stays suspended so that preview cannot drift.
                 if (!configuration.Safety.DryRun && !liveWritesArmed)
                 {
                     SuspendEventIntake();
@@ -395,6 +413,9 @@ public sealed class SyncCoordinator : IAsyncDisposable
             ChangeStatus(
                 SyncCoordinatorState.Snapshotting,
                 "After confirmation, reread both consoles.");
+
+            // Confirmation approves a diff, not merely an action. A changed diff
+            // must be shown again instead of inheriting the earlier approval.
             var freshSnapshot = await BuildFreshPlanAsync(cancellationToken).ConfigureAwait(false);
             var freshPlan = freshSnapshot.Plan;
             RecordPlanningFindings(freshPlan);
@@ -783,6 +804,8 @@ public sealed class SyncCoordinator : IAsyncDisposable
         var wasInvalidated = false;
         for (var attempt = 1; attempt <= SnapshotStabilityAttempts; attempt++)
         {
+            // Sequence fences cover both console callbacks and transport changes.
+            // Only an attempt with identical fences can authorize live execution.
             var before = GetEventSequences();
             var plan = await ReadFreshPlanAttemptAsync(cancellationToken).ConfigureAwait(false);
             var after = GetEventSequences();
@@ -821,6 +844,8 @@ public sealed class SyncCoordinator : IAsyncDisposable
         readbackWaiters.Clear();
         echoFingerprints.Clear();
 
+        // Read both consoles concurrently to minimize the interval in which an
+        // operator action could make the two snapshots describe different moments.
         var sourceNodes = GetSnapshotNodes(currentConfiguration, sourceSide: true);
         var targetNodes = GetSnapshotNodes(currentConfiguration, sourceSide: false);
         var sourceSnapshotTask = ReadNodesAsync(
@@ -906,6 +931,8 @@ public sealed class SyncCoordinator : IAsyncDisposable
     {
         for (var attempt = 1; attempt <= 3; attempt++)
         {
+            // Two scalar-certified passes must agree. Node snapshots alone are
+            // insufficient because some firmware exposes a stale local mirror.
             var first = await ReadScalarCertifiedNodePassAsync(
                     session,
                     nodes,
@@ -944,6 +971,9 @@ public sealed class SyncCoordinator : IAsyncDisposable
             CancellationToken cancellationToken)
     {
         var candidates = new Dictionary<string, WingParameter>(StringComparer.Ordinal);
+
+        // Node reads discover the available leaves efficiently; exact scalar reads
+        // below certify every value that can enter the plan.
         foreach (var node in nodes)
         {
             var snapshot = await session.SnapshotAsync(node.ToString(), cancellationToken)
@@ -1047,6 +1077,8 @@ public sealed class SyncCoordinator : IAsyncDisposable
             .Where(static group => group is not null)
             .ToHashSet(StringComparer.Ordinal);
 
+        // Model changes can reset sibling leaves. Keep the entire guarded group,
+        // including values already equal on the target, so it is rebuilt coherently.
         var retained = new List<PlannedWrite>();
         foreach (var write in completePlan.Writes)
         {
@@ -2411,6 +2443,8 @@ public sealed class SyncCoordinator : IAsyncDisposable
                     continue;
                 }
 
+                // The short window absorbs bursts from one physical control move.
+                // Last source value wins; source work outranks target-drift work.
                 await clock.Delay(TimeSpan.FromMilliseconds(25), cancellationToken).ConfigureAwait(false);
                 var coalesced = new Dictionary<string, EngineWork>(StringComparer.Ordinal)
                 {
@@ -2455,6 +2489,8 @@ public sealed class SyncCoordinator : IAsyncDisposable
                     IReadOnlyList<WingParameter>? expanded = null;
                     for (var attempt = 1; attempt <= 3; attempt++)
                     {
+                        // A model event may imply changes to sibling settings.
+                        // Expand and accept the group only while its event fence holds.
                         var expansionFence = GetEventSequences();
                         var candidate = await ExpandModelChangesAsync(valid, cancellationToken)
                             .ConfigureAwait(false);
@@ -4112,6 +4148,9 @@ public sealed class SyncCoordinator : IAsyncDisposable
             while (!cancellationToken.IsCancellationRequested && !stopping)
             {
                 attempt++;
+
+                // Cap exponential backoff so recovery remains responsive without
+                // creating a tight retry loop during an extended outage.
                 var delay = TimeSpan.FromMilliseconds(
                     Math.Min(
                         MaximumReconnectDelay.TotalMilliseconds,
@@ -4132,6 +4171,9 @@ public sealed class SyncCoordinator : IAsyncDisposable
                     await VerifyConnectedIdentitiesAsync(cancellationToken).ConfigureAwait(false);
                     await BeginCacheEpochAsync(cancellationToken).ConfigureAwait(false);
                     ChangeStatus(SyncCoordinatorState.Snapshotting, "After reconnect, reread both consoles.");
+
+                    // Reconnection never resumes from cached state. It establishes
+                    // a new epoch and rebuilds target intent from fresh console reads.
                     var freshSnapshot = await BuildFreshPlanAsync(cancellationToken).ConfigureAwait(false);
                     while (!IsSnapshotCurrent(freshSnapshot))
                     {

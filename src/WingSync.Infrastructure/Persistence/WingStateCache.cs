@@ -79,6 +79,8 @@ public sealed class WingStateCache : IAsyncDisposable
                 ObjectDisposedException.ThrowIf(_disposed, this);
                 if (_pending.Remove(key, out var previous))
                 {
+                    // One partition keeps only its newest observation. Cancelling
+                    // the old delay prevents a stale snapshot from winning the race.
                     previous.DelayCancellation.Cancel();
                 }
 
@@ -155,6 +157,8 @@ public sealed class WingStateCache : IAsyncDisposable
             var mismatch = primary.Status == CacheFileStatus.IdentityMismatch;
             if (primary.Status is CacheFileStatus.Corrupt or CacheFileStatus.IdentityMismatch)
             {
+                // Remove an untrustworthy primary before considering its backup;
+                // this prevents the same bad file from being retried at next start.
                 if (!TryQuarantine(
                         primaryPath,
                         mismatch ? "identity-mismatch" : "corrupt",
@@ -325,6 +329,8 @@ public sealed class WingStateCache : IAsyncDisposable
         await _resetGate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
+            // Reset excludes QueueWrite for the entire cancel/drain/move sequence,
+            // so no debounce can recreate a file in the directory being emptied.
             PendingWrite[] pendingWrites;
             lock (_pendingLock)
             {
@@ -489,6 +495,9 @@ public sealed class WingStateCache : IAsyncDisposable
 
                 var primaryPath = Path.GetFullPath(GetPrimaryPath(envelope.Identity));
                 var candidatePath = Path.GetFullPath(path);
+
+                // Accept only files whose content-derived partition maps back to
+                // their actual filename; copied or renamed cache files are ignored.
                 if (!candidatePath.Equals(primaryPath, StringComparison.OrdinalIgnoreCase) &&
                     !candidatePath.Equals(
                         string.Concat(primaryPath, ".bak"),
@@ -578,6 +587,8 @@ public sealed class WingStateCache : IAsyncDisposable
 
     private async Task FlushCoreAsync(CancellationToken cancellationToken)
     {
+        // QueueWrite can add work while an earlier batch is being persisted.
+        // Repeat until a lock-protected observation finds no pending generations.
         while (true)
         {
             PendingWrite[] writes;
@@ -630,6 +641,8 @@ public sealed class WingStateCache : IAsyncDisposable
         var primaryPath = GetPrimaryPath(snapshot.Identity);
         var backupPath = string.Concat(primaryPath, ".bak");
 
+        // Serialize all disk access so primary/backup rotation cannot interleave
+        // with a load, reset, or another partition write.
         await _ioGate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {

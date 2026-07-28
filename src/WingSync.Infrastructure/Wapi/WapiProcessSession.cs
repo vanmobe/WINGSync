@@ -21,8 +21,14 @@ public sealed class WapiProcessSession : IWingSession
     private readonly ISyncObserver observer;
     private readonly IClock clock;
     private readonly TimeSpan commandTimeout;
+
+    // Process lifecycle and wire-command ownership are distinct. A lifecycle
+    // change may stop a helper only after the single FIFO command lease is resolved.
     private readonly SemaphoreSlim lifecycleGate = new(1, 1);
     private readonly SemaphoreSlim commandGate = new(1, 1);
+
+    // Request IDs correlate asynchronous stdout frames with the command that
+    // owns them; the process generation rejects late frames from a replaced helper.
     private readonly ConcurrentDictionary<string, PendingRequest> pending = new(StringComparer.Ordinal);
     private readonly CancellationTokenSource lifetimeCancellation = new();
     private Process? process;
@@ -291,6 +297,8 @@ public sealed class WapiProcessSession : IWingSession
         };
         startInfo.Environment["WINGSYNC_ROLE"] = role;
 
+        // Publish the generation before starting readers so every callback can
+        // prove that it belongs to this exact helper process.
         var generation = Interlocked.Increment(ref processGeneration);
         Volatile.Write(ref activeProcessGeneration, generation);
         processCancellation = CancellationTokenSource.CreateLinkedTokenSource(
@@ -506,6 +514,8 @@ public sealed class WapiProcessSession : IWingSession
             return;
         }
 
+        // Stdout is reserved for this framed protocol. Values and free-form
+        // details are Base64 encoded so the pipe separator remains unambiguous.
         var parts = line.Split('|');
         if (parts.Length == 0)
         {
@@ -617,6 +627,8 @@ public sealed class WapiProcessSession : IWingSession
 
         if (count != request.Items.Count)
         {
+            // END is the snapshot commit marker. A mismatched count means the
+            // stream was truncated and none of its partial values may be trusted.
             request.SnapshotCompletion.TrySetException(
                 new InvalidDataException(
                     $"Snapshot was incomplete: helper reported {count}, received {request.Items.Count}."));

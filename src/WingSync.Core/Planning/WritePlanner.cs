@@ -305,6 +305,8 @@ public static class WingValueComparer
             return false;
         }
 
+        // WAPI may quantize the same control differently at small and large
+        // magnitudes, so accept either an absolute or a scale-relative match.
         var difference = MathF.Abs(expected - actual);
         var relativeScale = MathF.Max(MathF.Abs(expected), MathF.Abs(actual));
         return difference <= tolerance
@@ -327,6 +329,8 @@ public static class WriteRiskClassifier
         if (path.Segments.Count > 0
             && path.Segments[0].Equals("io", StringComparison.OrdinalIgnoreCase))
         {
+            // Physical I/O is always critical, even if a future catalog entry
+            // accidentally associates it with a less restrictive scope.
             return WriteRisk.Critical;
         }
 
@@ -399,6 +403,8 @@ public sealed class WritePlanner
         var inputOrder = 0;
         var superseded = 0;
 
+        // First turn each source observation into at most one policy-approved
+        // target candidate. Rejected observations remain visible as plan issues.
         foreach (var change in changes)
         {
             ArgumentNullException.ThrowIfNull(change);
@@ -453,12 +459,17 @@ public sealed class WritePlanner
             inputOrder++;
         }
 
+        // An unresolved sidechain reference makes the whole processor group
+        // unsafe: applying only its remaining leaves could create a mixed model.
         var candidates = candidatesByTarget.Values
             .Where(candidate =>
                 GetDynamicSourceGroup(candidate.SourcePath) is not { } sourceGroup ||
                 !blockedDynamicSourceGroups.Contains(sourceGroup))
             .ToList();
         AddModelSafetyGuards(candidates);
+
+        // Preserve the first-seen order between independent processor groups,
+        // while enforcing guard -> model -> settings -> restore within a group.
         var groupOrder = candidates
             .GroupBy(static candidate => candidate.GroupKey, StringComparer.Ordinal)
             .ToDictionary(
@@ -549,6 +560,8 @@ public sealed class WritePlanner
                 continue;
             }
 
+            // Reuse the group's final enable value to synthesize a temporary
+            // off/bypass write; execution restores the original write last.
             foreach (var enablingWrite in group.Where(static candidate => candidate.IsEnablingWrite).ToArray())
             {
                 candidates.Add(enablingWrite.CreateGuard(nextSyntheticOrder++));

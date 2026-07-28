@@ -95,6 +95,8 @@ public sealed class ConfigStore : IDisposable
             string? quarantinedPath = null;
             if (primary.Status == FileLoadStatus.Corrupt)
             {
+                // Preserve malformed content for support inspection, but move it
+                // out of the active path before attempting backup recovery.
                 if (!TryQuarantine(
                         _filePath,
                         "corrupt",
@@ -112,6 +114,8 @@ public sealed class ConfigStore : IDisposable
                 .ConfigureAwait(false);
             if (backup.Status == FileLoadStatus.Loaded)
             {
+                // Recovery is reported to the caller rather than silently
+                // rewriting the primary; the next explicit save performs rotation.
                 return new ConfigLoadResult(
                     ConfigLoadStatus.RecoveredFromBackup,
                     backup.Configuration,
