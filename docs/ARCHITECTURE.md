@@ -43,6 +43,11 @@ SyncCoordinator ── WritePlanner / ScopeCatalog / ConfigValidator
 - `WingSync.WapiHost.exe` is a statically built x64 MSVC helper around the
   official WAPI C API.
 
+The WPF shell uses a dark, high-contrast operator palette. A persistent
+five-stage timeline derives its state from the same identity, connection,
+dry-run, confirmation, and coordinator state used by the safety gates; it does
+not maintain an independent workflow state.
+
 ## Why one helper process per console
 
 The WAPI C API uses process-global connection state and does not provide an
@@ -157,6 +162,9 @@ counts, and the breakdown per scope. The default action is to refuse. When a
 high-risk scope is active, a second independent confirmation follows. Changing
 identity, IP, direction, scope, or mapping revokes live/high-risk approval,
 returns the configuration to dry run, and invalidates the connection test.
+After a completed dry run, the header can move the UI to live-ready mode
+without reopening the configuration editor. Starting live still creates a
+fresh diff and requires the same explicit confirmation.
 
 ## Cache and storage
 

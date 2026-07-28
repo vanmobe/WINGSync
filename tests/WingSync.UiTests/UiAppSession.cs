@@ -618,6 +618,24 @@ internal sealed class UiAppSession : IDisposable
         Thread.Sleep(250);
     }
 
+    public void ScrollIntoView(string automationId)
+    {
+        BringIntoView(FindById(automationId));
+        Thread.Sleep(250);
+    }
+
+    public void ScrollToTop(string automationId)
+    {
+        var scroll = GetPattern<ScrollPattern>(
+            FindById(automationId),
+            ScrollPattern.Pattern);
+        if (scroll.Current.VerticallyScrollable)
+        {
+            scroll.SetScrollPercent(ScrollPattern.NoScroll, 0);
+            Thread.Sleep(250);
+        }
+    }
+
     public void AssertVisibleWithinWindow(string automationId)
     {
         var element = FindById(automationId);
@@ -1004,21 +1022,59 @@ internal sealed class UiAppSession : IDisposable
         }
     }
 
-    private void CaptureScreenshot(string path)
+    public void CaptureScreenshot(
+        string path,
+        AutomationElement? overlay = null)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+        var directory = Path.GetDirectoryName(path);
+        if (!string.IsNullOrEmpty(directory))
+        {
+            Directory.CreateDirectory(directory);
+        }
+
         var bounds = MainWindow.Current.BoundingRectangle;
+        using var bitmap = CaptureWindow(MainWindow);
+        if (overlay is not null)
+        {
+            using var overlayBitmap = CaptureWindow(overlay);
+            var overlayBounds = overlay.Current.BoundingRectangle;
+            using var graphics = Graphics.FromImage(bitmap);
+            graphics.DrawImageUnscaled(
+                overlayBitmap,
+                checked((int)Math.Round(overlayBounds.Left - bounds.Left)),
+                checked((int)Math.Round(overlayBounds.Top - bounds.Top)));
+        }
+
+        bitmap.Save(path, ImageFormat.Png);
+    }
+
+    private static Bitmap CaptureWindow(AutomationElement window)
+    {
+        var bounds = window.Current.BoundingRectangle;
         var width = Math.Max(1, checked((int)Math.Ceiling(bounds.Width)));
         var height = Math.Max(1, checked((int)Math.Ceiling(bounds.Height)));
-        using var bitmap = new Bitmap(width, height, PixelFormat.Format32bppArgb);
+        var bitmap = new Bitmap(width, height, PixelFormat.Format32bppArgb);
         using var graphics = Graphics.FromImage(bitmap);
-        graphics.CopyFromScreen(
-            checked((int)Math.Floor(bounds.Left)),
-            checked((int)Math.Floor(bounds.Top)),
-            0,
-            0,
-            new System.Drawing.Size(width, height),
-            CopyPixelOperation.SourceCopy);
-        bitmap.Save(path, ImageFormat.Png);
+        var deviceContext = graphics.GetHdc();
+        try
+        {
+            const uint renderFullContent = 2;
+            if (!PrintWindow(
+                    new IntPtr(window.Current.NativeWindowHandle),
+                    deviceContext,
+                    renderFullContent))
+            {
+                throw new InvalidOperationException(
+                    $"Windows could not render '{window.Current.Name}' for capture.");
+            }
+        }
+        finally
+        {
+            graphics.ReleaseHdc(deviceContext);
+        }
+
+        return bitmap;
     }
 
     private static void DumpTree(
@@ -1076,6 +1132,14 @@ internal sealed class UiAppSession : IDisposable
     [return: MarshalAs(UnmanagedType.Bool)]
     [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
     private static extern bool IsWindowEnabled(IntPtr windowHandle);
+
+    [DllImport("user32.dll", EntryPoint = "PrintWindow")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
+    private static extern bool PrintWindow(
+        IntPtr windowHandle,
+        IntPtr deviceContext,
+        uint flags);
 
     private static int GetNativeDialogDefaultIdentifier(IntPtr windowHandle)
     {

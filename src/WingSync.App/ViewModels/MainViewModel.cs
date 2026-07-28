@@ -30,17 +30,16 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
             ?.InformationalVersion ??
         Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ??
         "1.0.0";
-    private static readonly Brush Green = FrozenBrush(23, 131, 92);
-    private static readonly Brush GreenSoft = FrozenBrush(226, 244, 237);
-    private static readonly Brush Orange = FrozenBrush(180, 107, 8);
-    private static readonly Brush OrangeSoft = FrozenBrush(255, 243, 226);
-    private static readonly Brush Red = FrozenBrush(190, 59, 67);
-    private static readonly Brush RedSoft = FrozenBrush(253, 232, 233);
-    private static readonly Brush Gray = FrozenBrush(92, 102, 122);
-    private static readonly Brush GraySoft = FrozenBrush(235, 238, 242);
-    private static readonly Brush Blue = FrozenBrush(11, 120, 208);
-    private static readonly Brush BlueSoft = FrozenBrush(227, 241, 251);
-    private static readonly Brush White = FrozenBrush(255, 255, 255);
+    private static readonly Brush Green = FrozenBrush(67, 193, 141);
+    private static readonly Brush GreenSoft = FrozenBrush(26, 61, 48);
+    private static readonly Brush Orange = FrozenBrush(240, 179, 90);
+    private static readonly Brush OrangeSoft = FrozenBrush(61, 43, 24);
+    private static readonly Brush Red = FrozenBrush(255, 107, 114);
+    private static readonly Brush RedSoft = FrozenBrush(67, 31, 34);
+    private static readonly Brush Gray = FrozenBrush(174, 181, 194);
+    private static readonly Brush GraySoft = FrozenBrush(37, 42, 49);
+    private static readonly Brush Blue = FrozenBrush(78, 168, 222);
+    private static readonly Brush BlueSoft = FrozenBrush(21, 43, 61);
 
     private readonly string dataDirectory;
     private readonly bool demoMode;
@@ -632,7 +631,13 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
     public bool HasBlockingProblems
     {
         get => hasBlockingProblems;
-        private set => SetProperty(ref hasBlockingProblems, value);
+        private set
+        {
+            if (SetProperty(ref hasBlockingProblems, value))
+            {
+                OnPropertyChanged(nameof(WorkflowSteps));
+            }
+        }
     }
 
     public string PrimaryProblemTitle
@@ -717,13 +722,7 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
 
     public bool CanPrimaryAction =>
         !IsRunning &&
-        !IsUiBusy &&
-        editableConfigurationIsValid &&
-        BothIdentitiesPinned &&
-        !string.IsNullOrWhiteSpace(EditableFohIp) &&
-        !string.IsNullOrWhiteSpace(EditableStageIp) &&
-        ChannelMappings.Any(static mapping => mapping.IsEnabled) &&
-        (!connectionTestSucceeded || IsDryRun || hasCompletedDryRun);
+        !IsUiBusy;
 
     public bool CanSelectLiveMode =>
         !IsRunning &&
@@ -758,14 +757,19 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
     {
         get
         {
-            if (!BothIdentitiesPinned)
+            if (!IsSetupReady)
             {
-                return "Setup required";
+                return "Open setup";
             }
 
             if (!connectionTestSucceeded)
             {
                 return "Test connection";
+            }
+
+            if (IsDryRun && hasCompletedDryRun)
+            {
+                return "Enable live";
             }
 
             if (!IsDryRun && !hasCompletedDryRun)
@@ -781,9 +785,9 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
     {
         get
         {
-            if (!BothIdentitiesPinned)
+            if (!IsSetupReady)
             {
-                return "Setup required: assign both consoles and verify the serial numbers.";
+                return "Open console selection, direction, scopes, and channel mapping.";
             }
 
             if (!connectionTestSucceeded)
@@ -796,9 +800,98 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
                 return "Enable dry run again and review the preview first.";
             }
 
+            if (IsDryRun && hasCompletedDryRun)
+            {
+                return "Move to live-ready mode without starting writes.";
+            }
+
             return IsDryRun
                 ? "Start a write-free dry run and review the preview."
                 : "Create a fresh live diff; the safe default choice in the confirmation is No.";
+        }
+    }
+
+    public IReadOnlyList<WorkflowStepViewModel> WorkflowSteps
+    {
+        get
+        {
+            var setupComplete = IsSetupReady;
+            var connectionComplete = setupComplete && connectionTestSucceeded;
+            var dryRunComplete = connectionComplete && hasCompletedDryRun;
+            var reviewComplete = dryRunComplete && !IsDryRun;
+            var liveActive =
+                !IsDryRun &&
+                coordinator.Status.State is SyncCoordinatorState.AwaitingConfirmation or
+                    SyncCoordinatorState.ApplyingLive or
+                    SyncCoordinatorState.RunningLive or
+                    SyncCoordinatorState.Reconnecting or
+                    SyncCoordinatorState.Paused;
+
+            var currentIndex = !setupComplete
+                ? 0
+                : !connectionComplete
+                    ? 1
+                    : !dryRunComplete
+                        ? 2
+                        : !reviewComplete
+                            ? 3
+                            : 4;
+            var names = new[] { "Setup", "Connection", "Dry run", "Review", "Live" };
+            var automationIds = new[] {
+                "WorkflowStageSetup",
+                "WorkflowStageConnection",
+                "WorkflowStageDryRun",
+                "WorkflowStageReview",
+                "WorkflowStageLive",
+            };
+            var complete = new[] {
+                setupComplete,
+                connectionComplete,
+                dryRunComplete,
+                reviewComplete,
+                false,
+            };
+            var steps = new WorkflowStepViewModel[names.Length];
+            for (var index = 0; index < names.Length; index++)
+            {
+                var isCurrent = index == currentIndex;
+                var isComplete = complete[index];
+                var isBlocked = isCurrent && HasBlockingProblems;
+                var background = isBlocked
+                    ? RedSoft
+                    : isComplete
+                        ? GreenSoft
+                        : isCurrent
+                            ? BlueSoft
+                            : GraySoft;
+                var foreground = isBlocked
+                    ? Red
+                    : isComplete
+                        ? Green
+                        : isCurrent
+                            ? Blue
+                            : Gray;
+                var status = isBlocked
+                    ? "Blocked"
+                    : isComplete
+                        ? "Complete"
+                        : index == 4 && liveActive
+                            ? "Active"
+                            : isCurrent
+                                ? "Current"
+                                : "Upcoming";
+                steps[index] = new WorkflowStepViewModel(
+                    names[index],
+                    isComplete ? "✓" : (index + 1).ToString(CultureInfo.InvariantCulture),
+                    status,
+                    background,
+                    foreground,
+                    isComplete ? Green : GraySoft,
+                    index == names.Length - 1 ? Visibility.Collapsed : Visibility.Visible,
+                    automationIds[index]);
+            }
+
+            return steps;
         }
     }
 
@@ -975,7 +1068,7 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
             }
 
             return IsDryRun
-                ? "Dry run reviewed: stop, deliberately enable live mode, and inspect the fresh diff."
+                ? "Dry run reviewed: enable live mode, then inspect and confirm the fresh diff."
                 : "Setup ready: start live and confirm the fresh diff; the default choice remains No.";
         }
     }
@@ -1265,11 +1358,11 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
 
     private async Task StartAsync()
     {
-        if (!BothIdentitiesPinned)
+        if (!IsSetupReady)
         {
             SetProblem(
                 "Setup not ready",
-                "Assign both consoles and verify the visible serial numbers.");
+                "Assign both consoles, verify their serial numbers, and check scopes and mapping.");
             SelectedPageIndex = 1;
             return;
         }
@@ -1277,6 +1370,13 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
         if (!connectionTestSucceeded)
         {
             await TestConnectionsAsync();
+            return;
+        }
+
+        if (IsDryRun && hasCompletedDryRun)
+        {
+            IsDryRun = false;
+            ClearProblem();
             return;
         }
 
@@ -2390,6 +2490,7 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
         OnPropertyChanged(nameof(RunModeBackground));
         OnPropertyChanged(nameof(RunModeForeground));
         OnPropertyChanged(nameof(SafetySummary));
+        OnPropertyChanged(nameof(WorkflowSteps));
         StartCommand.RaiseCanExecuteChanged();
         StopCommand.RaiseCanExecuteChanged();
         DiscoverCommand.RaiseCanExecuteChanged();
@@ -2411,6 +2512,7 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
         OnPropertyChanged(nameof(SetupProgressBackground));
         OnPropertyChanged(nameof(SetupProgressForeground));
         OnPropertyChanged(nameof(NextStepText));
+        OnPropertyChanged(nameof(WorkflowSteps));
     }
 
     private void RaiseDirectionProperties()
@@ -2590,6 +2692,12 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
             SelectedFohWing!.Wing.SerialNumber,
             SelectedStageWing!.Wing.SerialNumber,
             StringComparison.OrdinalIgnoreCase);
+
+    private bool IsSetupReady =>
+        BothIdentitiesPinned &&
+        editableConfigurationIsValid &&
+        ChannelMappings.Any(static mapping => mapping.IsEnabled) &&
+        ScopeSelections.Any(static scope => scope.IsSelected);
 
     private int CompletedSetupSteps
     {

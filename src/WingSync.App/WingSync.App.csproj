@@ -13,9 +13,6 @@
     <ProjectReference Include="..\WingSync.Infrastructure\WingSync.Infrastructure.csproj" />
   </ItemGroup>
   <ItemGroup>
-    <Resource Include="Assets\wingsync-logo.png" />
-  </ItemGroup>
-  <ItemGroup>
     <Content Include="..\..\LICENSES\wapi-SLA.pdf" Condition="Exists('..\..\LICENSES\wapi-SLA.pdf')">
       <Link>LICENSES\wapi-SLA.pdf</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>

@@ -112,6 +112,8 @@ internal static class UiScenarios
         app.WaitForElementName("HeaderTitleText", "Status");
         app.WaitForElementName("OverallStatusText", "Not started");
         app.WaitForElementName("StartButton", "Test connection");
+        app.WaitForElementName("WorkflowStageSetup", "Complete");
+        app.WaitForElementName("WorkflowStageConnection", "Current");
         AssertEx.True(app.FindById("StartButton").Current.IsEnabled);
         AssertEx.False(app.FindById("StopButton").Current.IsEnabled);
         app.WaitForElementNameContaining(
@@ -122,6 +124,9 @@ internal static class UiScenarios
         AssertEx.True(
             visibleProblem is null || visibleProblem.Current.IsOffscreen,
             "A fresh demo launch must not show a blocking-problem banner.");
+        AssertEx.True(
+            app.TryFindById("WingSyncLogo") is null,
+            "The header must not show the WingSync logo.");
 
         foreach (var id in new[]
                  {
@@ -131,7 +136,6 @@ internal static class UiScenarios
                      "NavigationActivity",
                      "NavigationSettings",
                      "HeaderTitleText",
-                     "WingSyncLogo",
                      "DirectionSummaryText",
                      "OverallStatusText",
                      "RunModeText",
@@ -140,10 +144,16 @@ internal static class UiScenarios
                      "StageStatusText",
                      "StartButton",
                      "StopButton",
+                     "WorkflowTimeline",
+                     "WorkflowSteps",
+                     "WorkflowStageSetup",
+                     "WorkflowStageConnection",
+                     "WorkflowStageDryRun",
+                     "WorkflowStageReview",
+                     "WorkflowStageLive",
                      "SetupProgressText",
                      "SetupProgressIndicator",
                      "NextStepText",
-                     "NextStepFooterText",
                      "OpenSetupButton",
                      "FohSerialText",
                      "StageSerialText",
@@ -163,15 +173,6 @@ internal static class UiScenarios
                 app.FindById("DirectionSummaryText").Current.Name,
                 StringComparison.Ordinal),
             "The direction UIA name must contain the current direction, not a static label.");
-        AssertEx.False(
-            string.IsNullOrWhiteSpace(app.FindById("NextStepFooterText").Current.Name),
-            "The dynamic next step must be exposed through UIA.");
-        AssertEx.False(
-            string.Equals(
-                "Next step",
-                app.FindById("NextStepFooterText").Current.Name,
-                StringComparison.Ordinal),
-            "The footer UIA name must contain the current next step, not a static label.");
         var stopButton = app.FindById("StopButton");
         AssertEx.Contains(
             "synchronization writes",
@@ -651,10 +652,11 @@ internal static class UiScenarios
             "SetupProgressIndicator",
             "Setup complete",
             TimeSpan.FromSeconds(5));
-        app.Navigate("NavigationSync", "Configure synchronization");
-        app.ToggleTo("DryRunCheckBox", ToggleState.Off);
+        app.WaitForElementName("WorkflowStageReview", "Current");
+        app.WaitForElementName("StartButton", "Enable live");
+        app.Invoke("StartButton");
+        app.WaitForElementName("WorkflowStageReview", "Complete");
         app.WaitForElementName("StartButton", "Start live");
-        app.Navigate("NavigationStatus", "Status");
         app.Invoke("StartButton");
 
         var dialog = app.WaitForDialog(
@@ -704,10 +706,10 @@ internal static class UiScenarios
             "Not started",
             TimeSpan.FromSeconds(10));
 
-        app.Navigate("NavigationSync", "Configure synchronization");
-        app.ToggleTo("DryRunCheckBox", ToggleState.Off);
+        app.WaitForElementName("StartButton", "Enable live");
+        app.Invoke("StartButton");
+        app.WaitForElementName("WorkflowStageLive", "Current");
         app.WaitForElementName("StartButton", "Start live");
-        app.Navigate("NavigationStatus", "Status");
         app.Invoke("StartButton");
         var dialog = app.WaitForDialog(
             "Confirm fresh live preview",

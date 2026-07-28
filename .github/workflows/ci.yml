@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, copilot/top-status-bar-orchestration]
   pull_request:
     branches: [main]
 
@@ -29,6 +29,28 @@ jobs:
 
       - name: Build managed solution
         run: dotnet build WingSync.slnx -c Release --no-restore
+
+      - name: Capture user guide screenshots
+        id: capture-guide-screenshots
+        continue-on-error: true
+        run: >-
+          dotnet run --project tests/WingSync.UiTests -c Release --no-build --
+          --app src/WingSync.App/bin/Release/net10.0-windows/WingSync.exe
+          --artifacts artifacts/ui
+          --capture-guide artifacts/user-guide
+
+      - name: Upload user guide screenshots
+        if: always()
+        uses: actions/upload-artifact@v4.6.2
+        with:
+          name: user-guide-screenshots
+          path: artifacts/user-guide
+          if-no-files-found: ignore
+
+      - name: Flag user guide screenshot capture failure
+        if: steps.capture-guide-screenshots.outcome == 'failure'
+        run: |
+          echo "::warning::Capturing user guide screenshots failed; documentation images were not refreshed. This does not fail the build. See the 'Capture user guide screenshots' step log for details."
 
       - name: Run core tests
         run: dotnet run --project tests/WingSync.Core.Tests -c Release --no-build

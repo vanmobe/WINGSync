@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Windows;
 using System.Windows.Media;
 using WingSync.Core.Abstractions;
 using WingSync.Core.Domain;
@@ -78,8 +79,8 @@ public sealed class ScopeSelectionViewModel : ObservableObject
     public string RiskLabel => IsHighRisk ? "HIGH RISK" : "STANDARD";
 
     public Brush RiskBrush => IsHighRisk
-        ? new SolidColorBrush(Color.FromRgb(180, 107, 8))
-        : new SolidColorBrush(Color.FromRgb(23, 131, 92));
+        ? new SolidColorBrush(Color.FromRgb(240, 179, 90))
+        : new SolidColorBrush(Color.FromRgb(67, 193, 141));
 
     public bool IsSelected
     {
@@ -182,6 +183,16 @@ public sealed record DirectionOption(string DisplayName, SyncDirection Direction
 {
     public override string ToString() => DisplayName;
 }
+
+public sealed record WorkflowStepViewModel(
+    string Name,
+    string Marker,
+    string Status,
+    Brush Background,
+    Brush Foreground,
+    Brush Connector,
+    Visibility ConnectorVisibility,
+    string AutomationId);
 
 public sealed record ActivityItemViewModel(
     DateTimeOffset Timestamp,

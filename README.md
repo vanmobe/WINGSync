@@ -30,6 +30,8 @@ and requires readback for every executed write during live use.
 - A safe flow of dry run → fresh diff → explicit live confirmation. Routing,
   inserts, tags, and mix control also remain behind a separate high-risk
   approval.
+- A persistent Setup → Connection → Dry run → Review → Live timeline with
+  immediate header actions in a dark operator theme.
 - Bounded event processing, echo suppression, reconnect with fresh snapshots,
   and a blocking pause on identity or readback problems.
 - A local cache per physical console for offline status display. Cache data is

@@ -18,8 +18,8 @@
         <Style x:Key="DialogPrimaryButton"
                TargetType="Button"
                BasedOn="{StaticResource PrimaryButton}">
-            <Setter Property="Background" Value="#E5C600" />
-            <Setter Property="Foreground" Value="#121212" />
+            <Setter Property="Background" Value="{StaticResource WingYellowBrush}" />
+            <Setter Property="Foreground" Value="{StaticResource OnWingYellowBrush}" />
         </Style>
     </Window.Resources>
     <Grid Background="{StaticResource CanvasBrush}">
@@ -29,8 +29,8 @@
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <Border Background="#FCFCFA"
-                BorderBrush="#D7D7D1"
+        <Border Background="{StaticResource ChromeBrush}"
+                BorderBrush="{StaticResource LineBrush}"
                 BorderThickness="0,0,0,1"
                 Padding="22,16">
             <Grid>
@@ -41,11 +41,11 @@
                 <Border Width="44"
                         Height="44"
                         CornerRadius="22"
-                        Background="#FFF2A8"
-                        BorderBrush="#E4C400"
+                        Background="{StaticResource SelectedBrush}"
+                        BorderBrush="{StaticResource SelectedBorderBrush}"
                         BorderThickness="1">
                     <TextBlock Text="!"
-                               Foreground="#6C5A00"
+                               Foreground="{StaticResource WingYellowBrush}"
                                FontSize="22"
                                FontWeight="Bold"
                                HorizontalAlignment="Center"
@@ -87,7 +87,7 @@
                         </StackPanel>
                         <TextBlock Grid.Column="1"
                                    Text="→"
-                                   Foreground="#A58C00"
+                                   Foreground="{StaticResource WingYellowBrush}"
                                    FontSize="20"
                                    HorizontalAlignment="Center"
                                    VerticalAlignment="Center" />
@@ -167,8 +167,8 @@
                             </ItemsControl.ItemsPanel>
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <Border Background="#F1F2EE"
-                                            BorderBrush="#D9DAD4"
+                                    <Border Background="{StaticResource SubtleBrush}"
+                                            BorderBrush="{StaticResource LineBrush}"
                                             BorderThickness="1"
                                             CornerRadius="9"
                                             Padding="9,4"
@@ -190,8 +190,8 @@
                 </Border>
 
                 <Border x:Name="HighRiskPanel"
-                        Background="#FFF3E2"
-                        BorderBrush="#D99A32"
+                        Background="{StaticResource WarningSurfaceBrush}"
+                        BorderBrush="{StaticResource WarningBorderBrush}"
                         BorderThickness="1"
                         CornerRadius="8"
                         Padding="14"
@@ -199,12 +199,12 @@
                         Visibility="Collapsed">
                     <StackPanel>
                         <TextBlock Text="High risk is armed"
-                                   Foreground="#76531F"
+                                   Foreground="{StaticResource WarningTextBrush}"
                                    FontWeight="Bold"
                                    FontSize="15"
                                    automation:AutomationProperties.AutomationId="LiveDiffHighRiskPanel" />
                         <TextBlock Text="MAIN, BUS, FADER, MUTE, routing, or inserts can change audibly right away. Verify that both shows are safely backed up."
-                                   Foreground="#76531F"
+                                   Foreground="{StaticResource WarningTextBrush}"
                                    TextWrapping="Wrap"
                                    Margin="0,5,0,8" />
                         <CheckBox x:Name="HighRiskAcknowledgement"
@@ -217,7 +217,7 @@
                 </Border>
 
                 <Expander Header="{Binding TokenListHeader}"
-                          Background="White"
+                          Background="{StaticResource SurfaceBrush}"
                           BorderBrush="{StaticResource LineBrush}"
                           BorderThickness="1"
                           Padding="12"
@@ -247,8 +247,8 @@
         </ScrollViewer>
 
         <Border Grid.Row="2"
-                Background="#FCFCFA"
-                BorderBrush="#D7D7D1"
+                Background="{StaticResource ChromeBrush}"
+                BorderBrush="{StaticResource LineBrush}"
                 BorderThickness="0,1,0,0"
                 Padding="22,13">
             <Grid>

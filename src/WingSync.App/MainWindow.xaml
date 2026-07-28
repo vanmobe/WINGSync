@@ -12,7 +12,7 @@
         automation:AutomationProperties.AutomationId="MainWindow">
     <Window.Resources>
         <Style x:Key="LightNavButton" TargetType="ListBoxItem">
-            <Setter Property="Foreground" Value="#333840" />
+            <Setter Property="Foreground" Value="{StaticResource MutedInkBrush}" />
             <Setter Property="Padding" Value="14,11" />
             <Setter Property="Margin" Value="9,2" />
             <Setter Property="HorizontalContentAlignment" Value="Stretch" />
@@ -30,17 +30,17 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="NavChrome" Property="Background" Value="#F1F1EE" />
-                                <Setter TargetName="NavChrome" Property="BorderBrush" Value="#D8D8D2" />
+                                <Setter TargetName="NavChrome" Property="Background" Value="{StaticResource SubtleBrush}" />
+                                <Setter TargetName="NavChrome" Property="BorderBrush" Value="{StaticResource LineBrush}" />
                             </Trigger>
                             <Trigger Property="IsSelected" Value="True">
-                                <Setter TargetName="NavChrome" Property="Background" Value="#FFF2A8" />
-                                <Setter TargetName="NavChrome" Property="BorderBrush" Value="#E4C400" />
-                                <Setter Property="Foreground" Value="#171717" />
+                                <Setter TargetName="NavChrome" Property="Background" Value="{StaticResource SelectedBrush}" />
+                                <Setter TargetName="NavChrome" Property="BorderBrush" Value="{StaticResource SelectedBorderBrush}" />
+                                <Setter Property="Foreground" Value="{StaticResource InkBrush}" />
                                 <Setter Property="FontWeight" Value="SemiBold" />
                             </Trigger>
                             <Trigger Property="IsKeyboardFocused" Value="True">
-                                <Setter TargetName="NavChrome" Property="BorderBrush" Value="#171717" />
+                                <Setter TargetName="NavChrome" Property="BorderBrush" Value="{StaticResource InkBrush}" />
                                 <Setter TargetName="NavChrome" Property="BorderThickness" Value="2" />
                             </Trigger>
                         </ControlTemplate.Triggers>
@@ -50,14 +50,14 @@
         </Style>
 
         <Style x:Key="BannerLabel" TargetType="TextBlock">
-            <Setter Property="Foreground" Value="#777872" />
+            <Setter Property="Foreground" Value="{StaticResource MutedInkBrush}" />
             <Setter Property="FontSize" Value="9" />
             <Setter Property="FontWeight" Value="Bold" />
         </Style>
 
         <Style x:Key="WingPrimaryButton" TargetType="Button" BasedOn="{StaticResource PrimaryButton}">
-            <Setter Property="Background" Value="#E5C600" />
-            <Setter Property="Foreground" Value="#121212" />
+            <Setter Property="Background" Value="{StaticResource WingYellowBrush}" />
+            <Setter Property="Foreground" Value="{StaticResource OnWingYellowBrush}" />
             <Setter Property="MinWidth" Value="112" />
             <Setter Property="Padding" Value="15,9" />
         </Style>
@@ -65,18 +65,16 @@
     <Grid Background="{StaticResource CanvasBrush}">
         <Grid.RowDefinitions>
             <RowDefinition Height="88" />
+            <RowDefinition Height="74" />
             <RowDefinition Height="*" />
-            <RowDefinition Height="42" />
         </Grid.RowDefinitions>
 
         <Border Grid.Row="0"
-                Background="#FCFCFA"
-                BorderBrush="#D7D7D1"
+                Background="{StaticResource ChromeBrush}"
+                BorderBrush="{StaticResource LineBrush}"
                 BorderThickness="0,0,0,1">
             <Grid Margin="14,8">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="68" />
-                    <ColumnDefinition Width="12" />
                     <ColumnDefinition Width="128" />
                     <ColumnDefinition Width="14" />
                     <ColumnDefinition Width="*" />
@@ -86,42 +84,28 @@
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
-                <Border Width="68"
-                        Height="68"
-                        Background="#252525"
-                        BorderBrush="#111111"
-                        BorderThickness="1"
-                        CornerRadius="9"
-                        ClipToBounds="True"
-                        automation:AutomationProperties.Name="WingSync-logo">
-                    <Image Source="/WingSync;component/Assets/wingsync-logo.png"
-                           Stretch="UniformToFill"
-                           automation:AutomationProperties.AutomationId="WingSyncLogo"
-                           automation:AutomationProperties.Name="WingSync logo, WING in white and SYNC in yellow" />
-                </Border>
-
-                <StackPanel Grid.Column="2" VerticalAlignment="Center">
+                <StackPanel VerticalAlignment="Center">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="WING"
-                                   Foreground="#171717"
+                                   Foreground="{StaticResource InkBrush}"
                                    FontSize="19"
                                    FontWeight="Bold" />
                         <TextBlock Text="SYNC"
-                                   Foreground="#C8AA00"
+                                   Foreground="{StaticResource WingYellowBrush}"
                                    FontSize="19"
                                    FontWeight="Bold"
                                    Margin="5,0,0,0" />
                     </StackPanel>
                     <TextBlock Text="FOH / MONITOR LINK"
-                               Foreground="#777872"
+                               Foreground="{StaticResource MutedInkBrush}"
                                FontSize="9"
                                FontWeight="Bold"
                                Margin="0,3,0,0" />
                 </StackPanel>
 
-                <Border Grid.Column="4"
-                        Background="#F3F3EF"
-                        BorderBrush="#DEDED8"
+                <Border Grid.Column="2"
+                        Background="{StaticResource RaisedSurfaceBrush}"
+                        BorderBrush="{StaticResource LineBrush}"
                         BorderThickness="1"
                         CornerRadius="7"
                         Padding="12,7"
@@ -137,14 +121,14 @@
                         <StackPanel VerticalAlignment="Center">
                             <TextBlock Text="CONSOLEFLOW" Style="{StaticResource BannerLabel}" />
                             <TextBlock Text="{Binding DirectionSummaryText}"
-                                       Foreground="#252525"
+                                       Foreground="{StaticResource InkBrush}"
                                        FontSize="12"
                                        FontWeight="SemiBold"
                                        TextTrimming="CharacterEllipsis"
                                        automation:AutomationProperties.AutomationId="DirectionSummaryText"
                                        automation:AutomationProperties.Name="{Binding DirectionSummaryText}" />
                         </StackPanel>
-                        <Border Grid.Column="1" Background="#D4D4CE" Margin="11,0" />
+                        <Border Grid.Column="1" Background="{StaticResource LineBrush}" Margin="11,0" />
                         <StackPanel Grid.Column="2" VerticalAlignment="Center">
                             <TextBlock Text="SESSION STATUS" Style="{StaticResource BannerLabel}" />
                             <StackPanel Orientation="Horizontal">
@@ -156,13 +140,13 @@
                                 <TextBlock Text="{Binding OverallStatusText}"
                                            automation:AutomationProperties.AutomationId="OverallStatusText"
                                            automation:AutomationProperties.LiveSetting="Polite"
-                                           Foreground="#252525"
+                                           Foreground="{StaticResource InkBrush}"
                                            FontSize="12"
                                            FontWeight="SemiBold"
                                            TextTrimming="CharacterEllipsis" />
                             </StackPanel>
                         </StackPanel>
-                        <Border Grid.Column="3" Background="#D4D4CE" Margin="11,0" />
+                        <Border Grid.Column="3" Background="{StaticResource LineBrush}" Margin="11,0" />
                         <StackPanel Grid.Column="4" VerticalAlignment="Center">
                             <TextBlock Text="MODE" Style="{StaticResource BannerLabel}" />
                             <Border Background="{Binding RunModeBackground}"
@@ -181,7 +165,7 @@
                     </Grid>
                 </Border>
 
-                <Button Grid.Column="6"
+                <Button Grid.Column="4"
                         Content="Stop"
                         Command="{Binding StopCommand}"
                         IsEnabled="{Binding IsRunning}"
@@ -194,7 +178,7 @@
                         automation:AutomationProperties.Name="Immediately block new synchronization writes"
                         automation:AutomationProperties.AcceleratorKey="Ctrl+Shift+S"
                         automation:AutomationProperties.HelpText="Immediately blocks new writes; an already-sent transaction is safely read back first and then both connections are disconnected. Shortcut Ctrl+Shift+S." />
-                <Button Grid.Column="8"
+                <Button Grid.Column="6"
                         Content="{Binding StartButtonText}"
                         Command="{Binding StartCommand}"
                         IsEnabled="{Binding CanPrimaryAction}"
@@ -207,10 +191,76 @@
         </Border>
 
         <Border Grid.Row="1"
+                Background="{StaticResource RaisedSurfaceBrush}"
+                BorderBrush="{StaticResource LineBrush}"
+                BorderThickness="0,0,0,1"
+                automation:AutomationProperties.AutomationId="WorkflowTimeline">
+            <Grid Margin="20,8">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="148" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <StackPanel VerticalAlignment="Center">
+                    <TextBlock Text="SAFE WORKFLOW"
+                               Style="{StaticResource BannerLabel}" />
+                    <TextBlock Text="Follow each stage in order"
+                               Foreground="{StaticResource MutedInkBrush}"
+                               FontSize="11"
+                               Margin="0,3,0,0" />
+                </StackPanel>
+                <ItemsControl Grid.Column="1"
+                              ItemsSource="{Binding WorkflowSteps}"
+                              automation:AutomationProperties.AutomationId="WorkflowSteps">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <UniformGrid Rows="1" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Grid Margin="0,0,6,0">
+                                <Border Height="2"
+                                        Margin="50,0,-12,21"
+                                        VerticalAlignment="Center"
+                                        Background="{Binding Connector}"
+                                        Visibility="{Binding ConnectorVisibility}" />
+                                <StackPanel Orientation="Horizontal"
+                                            HorizontalAlignment="Center"
+                                            VerticalAlignment="Center">
+                                    <Border Width="30"
+                                            Height="30"
+                                            CornerRadius="15"
+                                            Background="{Binding Background}"
+                                            BorderBrush="{Binding Foreground}"
+                                            BorderThickness="1">
+                                        <TextBlock Text="{Binding Marker}"
+                                                   Foreground="{Binding Foreground}"
+                                                   FontWeight="Bold"
+                                                   HorizontalAlignment="Center"
+                                                   VerticalAlignment="Center" />
+                                    </Border>
+                                    <StackPanel Margin="8,0,0,0" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding Name}"
+                                                   FontWeight="SemiBold"
+                                                   automation:AutomationProperties.AutomationId="{Binding AutomationId}"
+                                                   automation:AutomationProperties.Name="{Binding Status}" />
+                                        <TextBlock Text="{Binding Status}"
+                                                   Foreground="{Binding Foreground}"
+                                                   FontSize="10" />
+                                    </StackPanel>
+                                </StackPanel>
+                            </Grid>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </Grid>
+        </Border>
+
+        <Border Grid.Row="2"
                 Width="188"
                 HorizontalAlignment="Left"
-                Background="#F8F8F5"
-                BorderBrush="#D7D7D1"
+                Background="{StaticResource ChromeBrush}"
+                BorderBrush="{StaticResource LineBrush}"
                 BorderThickness="0,0,1,0">
             <Grid>
                 <Grid.RowDefinitions>
@@ -235,7 +285,7 @@
                                  automation:AutomationProperties.AcceleratorKey="Ctrl+1"
                                  automation:AutomationProperties.HelpText="Open the live overview. Shortcut Ctrl+1.">
                         <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="&#x25CF;" Foreground="#A58C00" Margin="0,0,11,0" />
+                            <TextBlock Text="&#x25CF;" Foreground="{StaticResource WingYellowBrush}" Margin="0,0,11,0" />
                             <TextBlock Text="Status" />
                         </StackPanel>
                     </ListBoxItem>
@@ -246,7 +296,7 @@
                                  automation:AutomationProperties.AcceleratorKey="Ctrl+2"
                                  automation:AutomationProperties.HelpText="Configure consoles, scopes, and channel mapping. Shortcut Ctrl+2.">
                         <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="&#x2194;" Foreground="#A58C00" FontSize="18" Margin="0,-2,10,0" />
+                            <TextBlock Text="&#x2194;" Foreground="{StaticResource WingYellowBrush}" FontSize="18" Margin="0,-2,10,0" />
                             <TextBlock Text="Synchronization" />
                         </StackPanel>
                     </ListBoxItem>
@@ -257,7 +307,7 @@
                                  automation:AutomationProperties.AcceleratorKey="Ctrl+3"
                                  automation:AutomationProperties.HelpText="View writes, reconnects, and problems. Shortcut Ctrl+3.">
                         <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="&#x2261;" Foreground="#A58C00" FontSize="19" Margin="0,-3,11,0" />
+                            <TextBlock Text="&#x2261;" Foreground="{StaticResource WingYellowBrush}" FontSize="19" Margin="0,-3,11,0" />
                             <TextBlock Text="Activity" />
                         </StackPanel>
                     </ListBoxItem>
@@ -268,7 +318,7 @@
                                  automation:AutomationProperties.AcceleratorKey="Ctrl+4"
                                  automation:AutomationProperties.HelpText="Open recovery, cache, and product information. Shortcut Ctrl+4.">
                         <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="&#x2699;" Foreground="#A58C00" FontSize="16" Margin="0,-1,10,0" />
+                            <TextBlock Text="&#x2699;" Foreground="{StaticResource WingYellowBrush}" FontSize="16" Margin="0,-1,10,0" />
                             <TextBlock Text="Settings" />
                         </StackPanel>
                     </ListBoxItem>
@@ -277,21 +327,21 @@
                 <Border Grid.Row="2"
                         Margin="10,10,10,14"
                         Padding="11"
-                        Background="#EFEFEA"
-                        BorderBrush="#D7D7D1"
+                        Background="{StaticResource RaisedSurfaceBrush}"
+                        BorderBrush="{StaticResource LineBrush}"
                         BorderThickness="1"
                         CornerRadius="6">
                     <StackPanel>
                         <TextBlock Text="LIVE AUDIO SAFETY"
                                    Style="{StaticResource BannerLabel}" />
                         <TextBlock Text="Dry run and readback first"
-                                   Foreground="#393A36"
+                                   Foreground="{StaticResource InkBrush}"
                                    FontSize="11"
                                    FontWeight="SemiBold"
                                    Margin="0,3,0,0"
                                    TextWrapping="Wrap" />
                         <TextBlock Text="{Binding VersionText}"
-                                   Foreground="#777872"
+                                   Foreground="{StaticResource MutedInkBrush}"
                                    FontSize="10"
                                    Margin="0,5,0,0" />
                     </StackPanel>
@@ -299,13 +349,13 @@
             </Grid>
         </Border>
 
-        <Grid Grid.Row="1" Margin="188,0,0,0">
+        <Grid Grid.Row="2" Margin="188,0,0,0">
             <Grid.RowDefinitions>
                 <RowDefinition Height="58" />
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
 
-            <Border Background="White"
+            <Border Background="{StaticResource SurfaceBrush}"
                     BorderBrush="{StaticResource LineBrush}"
                     BorderThickness="0,0,0,1">
                 <StackPanel Margin="28,0" VerticalAlignment="Center">
@@ -330,7 +380,8 @@
                 </TabControl.Resources>
 
                 <TabItem>
-                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                  automation:AutomationProperties.AutomationId="StatusScrollViewer">
                         <StackPanel Margin="30,27,30,36" MaxWidth="1150">
                             <TextBlock Text="System status" Style="{StaticResource PageTitle}" />
                             <TextBlock Text="Live overview of both consoles, the cache, and the synchronization flow."
@@ -338,8 +389,8 @@
                                        Margin="0,0,0,22" />
 
                             <Border Style="{StaticResource Card}"
-                                    Background="#FFF3E2"
-                                    BorderBrush="#F0C67F"
+                                    Background="{StaticResource WarningSurfaceBrush}"
+                                    BorderBrush="{StaticResource WarningBorderBrush}"
                                     Margin="0,0,0,18"
                                     Visibility="{Binding HasBlockingProblems, Converter={StaticResource BooleanToVisibilityConverter}}"
                                     automation:AutomationProperties.AutomationId="ProblemBanner">
@@ -349,7 +400,7 @@
                                         <ColumnDefinition Width="*" />
                                         <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
-                                    <Border Width="31" Height="31" CornerRadius="16" Background="#D57A00">
+                                    <Border Width="31" Height="31" CornerRadius="16" Background="{StaticResource WarningBrush}">
                                         <TextBlock Text="!" Foreground="White" FontWeight="Bold"
                                                    HorizontalAlignment="Center" VerticalAlignment="Center" />
                                     </Border>
@@ -357,7 +408,7 @@
                                         <TextBlock Text="{Binding PrimaryProblemTitle}" FontWeight="SemiBold" />
                                         <TextBlock Text="{Binding PrimaryProblemDetail}"
                                                    automation:AutomationProperties.LiveSetting="Assertive"
-                                                   Foreground="#76531F"
+                                                   Foreground="{StaticResource WarningTextBrush}"
                                                    TextWrapping="Wrap" />
                                     </StackPanel>
                                     <Button Grid.Column="2"
@@ -368,8 +419,8 @@
                             </Border>
 
                             <Border Style="{StaticResource Card}"
-                                    Background="#F8F9FA"
-                                    BorderBrush="#DCE1E8"
+                                    Background="{StaticResource RaisedSurfaceBrush}"
+                                    BorderBrush="{StaticResource LineBrush}"
                                     Margin="0,0,0,18"
                                     automation:AutomationProperties.AutomationId="SetupChecklist">
                                 <Grid>
@@ -831,14 +882,14 @@
                                                            FontSize="11" />
                                             </StackPanel>
                                         </CheckBox>
-                                        <Border Background="#EAF4FC" CornerRadius="6" Padding="10" Margin="0,16,0,0">
+                                        <Border Background="{StaticResource InfoSurfaceBrush}" CornerRadius="6" Padding="10" Margin="0,16,0,0">
                                             <TextBlock Text="{Binding SafetySummary}"
                                                        TextWrapping="Wrap"
-                                                       Foreground="#235F8B"
+                                                       Foreground="{StaticResource InfoTextBrush}"
                                                        FontSize="12" />
                                         </Border>
                                         <TextBlock Text="{Binding ConfigurationSafetyNotice}"
-                                                   Foreground="#76531F"
+                                                   Foreground="{StaticResource WarningTextBrush}"
                                                    TextWrapping="Wrap"
                                                    FontSize="11"
                                                    Margin="0,10,0,0"
@@ -1062,46 +1113,5 @@
             </TabControl>
         </Grid>
 
-        <Border Grid.Row="2"
-                Background="#20211F"
-                BorderBrush="#111211"
-                BorderThickness="0,1,0,0"
-                automation:AutomationProperties.AutomationId="NextStepFooter">
-            <Grid Margin="16,0">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
-                <Border Width="4"
-                        Height="20"
-                        Background="#E5C600"
-                        CornerRadius="2"
-                        Margin="0,0,10,0"
-                        VerticalAlignment="Center" />
-                <StackPanel Grid.Column="1"
-                            Orientation="Horizontal"
-                            VerticalAlignment="Center">
-                    <TextBlock Text="NEXT STEP"
-                               Foreground="#F0D527"
-                               FontSize="10"
-                               FontWeight="Bold"
-                               Margin="0,0,10,0" />
-                    <TextBlock Text="{Binding NextStepText}"
-                               Foreground="#ECECE8"
-                               FontSize="12"
-                               TextTrimming="CharacterEllipsis"
-                               ToolTip="{Binding NextStepText}"
-                               automation:AutomationProperties.AutomationId="NextStepFooterText"
-                               automation:AutomationProperties.Name="{Binding NextStepText}" />
-                </StackPanel>
-                <TextBlock Grid.Column="2"
-                           Text="Ctrl+1…4 navigate  ·  Ctrl+Shift+S stop"
-                           Foreground="#A9AAA4"
-                           FontSize="10"
-                           VerticalAlignment="Center"
-                           automation:AutomationProperties.Name="Shortcuts: Control 1 through 4 for navigation; Control Shift S for stop" />
-            </Grid>
-        </Border>
     </Grid>
 </Window>
