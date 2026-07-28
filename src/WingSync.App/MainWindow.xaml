@@ -380,7 +380,8 @@
                 </TabControl.Resources>
 
                 <TabItem>
-                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                  automation:AutomationProperties.AutomationId="StatusScrollViewer">
                         <StackPanel Margin="30,27,30,36" MaxWidth="1150">
                             <TextBlock Text="System status" Style="{StaticResource PageTitle}" />
                             <TextBlock Text="Live overview of both consoles, the cache, and the synchronization flow."

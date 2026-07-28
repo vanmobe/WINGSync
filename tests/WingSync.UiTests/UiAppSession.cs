@@ -624,6 +624,18 @@ internal sealed class UiAppSession : IDisposable
         Thread.Sleep(250);
     }
 
+    public void ScrollToTop(string automationId)
+    {
+        var scroll = GetPattern<ScrollPattern>(
+            FindById(automationId),
+            ScrollPattern.Pattern);
+        if (scroll.Current.VerticallyScrollable)
+        {
+            scroll.SetScrollPercent(ScrollPattern.NoScroll, 0);
+            Thread.Sleep(250);
+        }
+    }
+
     public void AssertVisibleWithinWindow(string automationId)
     {
         var element = FindById(automationId);
