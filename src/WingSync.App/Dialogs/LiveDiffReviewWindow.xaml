@@ -256,8 +256,9 @@
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
-                <TextBlock Text="Default choice: cancel · readback remains required"
+                <TextBlock Text="Recommended after testing: start from now · no initial writes"
                            Foreground="{StaticResource MutedInkBrush}"
                            FontSize="11"
                            VerticalAlignment="Center" />
@@ -274,13 +275,22 @@
                         automation:AutomationProperties.HelpText="Safe default choice: close the preview without writes." />
                 <Button x:Name="ApproveButton"
                         Grid.Column="2"
-                        Content="Activate live"
+                        Content="Apply shown differences"
                         Click="OnApprove"
                         Style="{StaticResource DialogPrimaryButton}"
                         MinWidth="145"
                         automation:AutomationProperties.AutomationId="6"
                         automation:AutomationProperties.Name="Yes"
-                        automation:AutomationProperties.HelpText="After one last fresh check, executes only the permitted changes." />
+                        automation:AutomationProperties.HelpText="After one last fresh check, executes only the explicitly permitted differences." />
+                <Button x:Name="StartFromNowButton"
+                        Grid.Column="3"
+                        Content="Start live from now"
+                        Click="OnStartFromNow"
+                        Style="{StaticResource DialogPrimaryButton}"
+                        MinWidth="155"
+                        Margin="8,0,0,0"
+                        automation:AutomationProperties.AutomationId="StartLiveFromNowButton"
+                        automation:AutomationProperties.Name="Start live from the current baseline without initial writes" />
             </Grid>
         </Border>
     </Grid>

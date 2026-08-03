@@ -134,6 +134,23 @@ public sealed class WapiProcessSession : IWingSession
                 .WaitAsync(commandTimeout, cancellationToken)
                 .ConfigureAwait(false);
         }
+        catch (WapiException exception) when (
+            exception.ErrorCode.Equals("WAPI_0", StringComparison.OrdinalIgnoreCase) &&
+            exception.NativeMessage.Contains(
+                "returned no data",
+                StringComparison.OrdinalIgnoreCase))
+        {
+            // Dynamic plugin nodes only exist while their model is instantiated.
+            // Native WAPI reports an absent node as WAPI_0/no-data instead of an
+            // empty snapshot. Preserve that distinction from transport faults.
+            return Array.Empty<WingParameter>();
+        }
+        catch (WapiException exception)
+        {
+            throw new WapiException(
+                exception.ErrorCode,
+                $"snapshot {canonicalNode}: {exception.NativeMessage}");
+        }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
             // A native SNAPSHOT can still be running after managed cancellation.
@@ -343,10 +360,10 @@ public sealed class WapiProcessSession : IWingSession
                 process.HasExited ||
                 !IsCurrentProcessGeneration(generation))
             {
-                throw new IOException("The WAPI helper closed unexpectedly.");
+                throw CreateHelperClosedException();
             }
 
-            var writer = input ?? throw new IOException("The WAPI helper closed unexpectedly.");
+            var writer = input ?? throw CreateHelperClosedException();
             var id = Interlocked.Increment(ref requestSequence).ToString(CultureInfo.InvariantCulture);
             var command = string.Format(CultureInfo.InvariantCulture, commandTemplate, id);
             if (command.Length > MaxWireLineLength)
@@ -821,6 +838,24 @@ public sealed class WapiProcessSession : IWingSession
         ChangeState(WingSessionState.Faulted, exception.Message);
     }
 
+    private IOException CreateHelperClosedException()
+    {
+        try
+        {
+            if (process is { HasExited: true } exitedProcess)
+            {
+                return new IOException(
+                    $"The WAPI helper stopped unexpectedly (exit code {exitedProcess.ExitCode}).");
+            }
+        }
+        catch (InvalidOperationException)
+        {
+            // The process can be disposed concurrently by the lifecycle recovery path.
+        }
+
+        return new IOException("The WAPI helper closed unexpectedly.");
+    }
+
     private void FailAllPending(
         Exception exception,
         long generation,
@@ -989,8 +1024,12 @@ public sealed class WapiException : IOException
         : base($"WAPI error {errorCode}: {message}")
     {
         ErrorCode = string.IsNullOrWhiteSpace(errorCode) ? "UNKNOWN" : errorCode;
+        NativeMessage = message ?? string.Empty;
     }
 
     /// <summary>Gets the native wapi status code.</summary>
     public string ErrorCode { get; }
+
+    /// <summary>Gets the unformatted diagnostic returned by native wapi.</summary>
+    public string NativeMessage { get; }
 }

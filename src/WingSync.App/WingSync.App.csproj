@@ -5,9 +5,13 @@
     <UseWPF>true</UseWPF>
     <RootNamespace>WingSync.App</RootNamespace>
     <AssemblyName>WingSync</AssemblyName>
+    <ApplicationIcon>Assets\WingSync.ico</ApplicationIcon>
     <RuntimeFrameworkVersion>10.0.10</RuntimeFrameworkVersion>
     <InvariantGlobalization>false</InvariantGlobalization>
   </PropertyGroup>
+  <ItemGroup>
+    <Resource Include="Assets\WingSync.ico" />
+  </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\WingSync.Core\WingSync.Core.csproj" />
     <ProjectReference Include="..\WingSync.Infrastructure\WingSync.Infrastructure.csproj" />

@@ -5,9 +5,11 @@ using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Reflection;
+using System.Text.Json;
 using System.Windows;
 using System.Windows.Data;
 using System.Windows.Media;
+using Microsoft.Win32;
 using WingSync.App.Dialogs;
 using WingSync.Core.Abstractions;
 using WingSync.Core.Domain;
@@ -52,10 +54,13 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
     private readonly SyncDiagnosticsHub diagnostics;
     private readonly SyncCoordinator coordinator;
     private readonly ConcurrentQueue<PreviewTokenAuditEntry> previewTokenAudit = new();
+    private readonly ConcurrentQueue<DiagnosticEvent> pendingActivityDiagnostics = new();
     private readonly ObservableCollection<ActivityItemViewModel> activityItems = [];
     private readonly ICollectionView filteredActivity;
     private readonly SemaphoreSlim disposeGate = new(1, 1);
     private readonly SemaphoreSlim uiOperationGate = new(1, 1);
+    private readonly Dictionary<string, string> fohChannelNames = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, string> stageChannelNames = new(StringComparer.Ordinal);
     private AppConfiguration? activeConfiguration;
     private bool disposed;
     private bool editableConfigurationIsValid;
@@ -81,10 +86,10 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
     private string selectedActivityFilter = "All";
     private string overallStatusText = "Not started";
     private Brush overallStatusBrush = Gray;
-    private string fohStatusText = "Offline";
+    private string fohStatusText = "Not connected";
     private Brush fohStatusBackground = GraySoft;
     private Brush fohStatusForeground = Gray;
-    private string stageStatusText = "Offline";
+    private string stageStatusText = "Not connected";
     private Brush stageStatusBackground = GraySoft;
     private Brush stageStatusForeground = Gray;
     private string flowStatusText = "GESTOPT";
@@ -105,6 +110,7 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
     private string stageCacheSummary = "No local snapshot";
     private long cachePresentationGeneration;
     private int previewTokenAuditCount;
+    private int activityFlushScheduled;
 
     private MainViewModel(
         string dataDirectory,
@@ -138,6 +144,18 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
         ActivityFilters = ["All", "Problems", "Writes", "Network"];
         ScopeSelections = new ObservableCollection<ScopeSelectionViewModel>(CreateScopeSelections());
         ChannelMappings = [];
+        ChannelMappings.CollectionChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.NewItems is null)
+            {
+                return;
+            }
+
+            foreach (var mapping in eventArgs.NewItems.OfType<ChannelMappingViewModel>())
+            {
+                ApplyResolvedChannelNames(mapping);
+            }
+        };
         DiscoveredWings = [];
         filteredActivity = CollectionViewSource.GetDefaultView(activityItems);
         filteredActivity.Filter = FilterActivity;
@@ -171,16 +189,36 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
             AddAuxMapping,
             () => !IsRunning && !IsUiBusy,
             HandleCommandError);
+        ImportMappingsCommand = new RelayCommand(
+            ImportMappings,
+            () => !IsRunning && !IsUiBusy,
+            HandleCommandError);
+        ExportMappingsCommand = new RelayCommand(
+            ExportMappings,
+            () => !IsRunning && !IsUiBusy && ChannelMappings.Count > 0,
+            HandleCommandError);
         RemoveMappingsCommand = new RelayCommand(
             RemoveSelectedMapping,
             () => !IsRunning && !IsUiBusy && SelectedMapping is not null,
             HandleCommandError);
+        RemoveMappingCommand = new RelayCommand<ChannelMappingViewModel>(
+            RemoveMapping,
+            _ => !IsRunning && !IsUiBusy,
+            HandleCommandError);
         ShowProblemsCommand = new RelayCommand(
+            () => SelectedPageIndex = 3,
+            onError: HandleCommandError);
+        RecoverBlockedSessionCommand = new AsyncRelayCommand(
+            () => RunExclusiveAsync(RecoverBlockedSessionAsync),
+            () => IsRecoverableBlock && !IsUiBusy,
+            HandleCommandError);
+        OpenSetupCommand = new RelayCommand(
             () => SelectedPageIndex = 2,
             onError: HandleCommandError);
-        OpenSetupCommand = new RelayCommand(
-            () => SelectedPageIndex = 1,
-            onError: HandleCommandError);
+        SwapAssignmentsCommand = new RelayCommand(
+            SwapConsoleAssignments,
+            () => !IsRunning && SelectedFohWing is not null && SelectedStageWing is not null,
+            HandleCommandError);
         ClearActivityCommand = new RelayCommand(ClearActivity, onError: HandleCommandError);
         ExportSupportBundleCommand = new AsyncRelayCommand(
             () => RunExclusiveAsync(ExportSupportBundleAsync),
@@ -334,11 +372,21 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
 
     public RelayCommand AddAuxMappingCommand { get; }
 
+    public RelayCommand ImportMappingsCommand { get; }
+
+    public RelayCommand ExportMappingsCommand { get; }
+
     public RelayCommand RemoveMappingsCommand { get; }
+
+    public RelayCommand<ChannelMappingViewModel> RemoveMappingCommand { get; }
 
     public RelayCommand ShowProblemsCommand { get; }
 
+    public AsyncRelayCommand RecoverBlockedSessionCommand { get; }
+
     public RelayCommand OpenSetupCommand { get; }
+
+    public RelayCommand SwapAssignmentsCommand { get; }
 
     public RelayCommand ClearActivityCommand { get; }
 
@@ -366,18 +414,20 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
     public string HeaderTitle => SelectedPageIndex switch
     {
         0 => "Status",
-        1 => "Configure synchronization",
-        2 => "Activity and diagnostics",
-        3 => "Settings",
+        1 => "Connections",
+        2 => "Mapping and scopes",
+        3 => "Activity and diagnostics",
+        4 => "Settings",
         _ => "WingSync",
     };
 
     public string HeaderSubtitle => SelectedPageIndex switch
     {
         0 => "Safe one-way synchronization with readback",
-        1 => "Scopes and channel mapping",
-        2 => "Structured local audit trail",
-        3 => "Recovery, cache, and product information",
+        1 => "Discover, assign, and verify both consoles",
+        2 => "Select sections and map source channels to targets",
+        3 => "Structured local audit trail",
+        4 => "Recovery, cache, and product information",
         _ => string.Empty,
     };
 
@@ -472,6 +522,7 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
         {
             if (SetProperty(ref selectedDirection, value))
             {
+                ApplyResolvedChannelNames();
                 NotifyTopologyChanged();
                 RaiseDirectionProperties();
             }
@@ -769,7 +820,7 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
 
             if (IsDryRun && hasCompletedDryRun)
             {
-                return "Enable live";
+                return "Continue to live review";
             }
 
             if (!IsDryRun && !hasCompletedDryRun)
@@ -777,7 +828,7 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
                 return "Dry run required";
             }
 
-            return IsDryRun ? "Start dry run" : "Start live";
+            return IsDryRun ? "Generate preview" : "Start live";
         }
     }
 
@@ -802,7 +853,7 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
 
             if (IsDryRun && hasCompletedDryRun)
             {
-                return "Move to live-ready mode without starting writes.";
+                return "Open the fresh live diff review. No writes occur until you explicitly confirm it.";
             }
 
             return IsDryRun
@@ -815,10 +866,10 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
     {
         get
         {
-            var setupComplete = IsSetupReady;
-            var connectionComplete = setupComplete && connectionTestSucceeded;
-            var dryRunComplete = connectionComplete && hasCompletedDryRun;
-            var reviewComplete = dryRunComplete && !IsDryRun;
+            var assignmentComplete = BothIdentitiesPinned;
+            var connectionComplete = assignmentComplete && connectionTestSucceeded;
+            var mappingComplete = connectionComplete && IsSetupReady;
+            var previewComplete = mappingComplete && hasCompletedDryRun;
             var liveActive =
                 !IsDryRun &&
                 coordinator.Status.State is SyncCoordinatorState.AwaitingConfirmation or
@@ -827,16 +878,16 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
                     SyncCoordinatorState.Reconnecting or
                     SyncCoordinatorState.Paused;
 
-            var currentIndex = !setupComplete
+            var currentIndex = !assignmentComplete
                 ? 0
                 : !connectionComplete
                     ? 1
-                    : !dryRunComplete
+                    : !mappingComplete
                         ? 2
-                        : !reviewComplete
+                        : !previewComplete
                             ? 3
                             : 4;
-            var names = new[] { "Setup", "Connection", "Dry run", "Review", "Live" };
+            var names = new[] { "Assignment", "Connection", "Mapping", "Preview", "Live" };
             var automationIds = new[] {
                 "WorkflowStageSetup",
                 "WorkflowStageConnection",
@@ -845,10 +896,10 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
                 "WorkflowStageLive",
             };
             var complete = new[] {
-                setupComplete,
+                assignmentComplete,
                 connectionComplete,
-                dryRunComplete,
-                reviewComplete,
+                mappingComplete,
+                previewComplete,
                 false,
             };
             var steps = new WorkflowStepViewModel[names.Length];
@@ -856,7 +907,8 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
             {
                 var isCurrent = index == currentIndex;
                 var isComplete = complete[index];
-                var isBlocked = isCurrent && HasBlockingProblems;
+                var isBlocked = isCurrent && HasBlockingProblems &&
+                    (index != 1 || IsConnectionProblem(PrimaryProblemTitle));
                 var background = isBlocked
                     ? RedSoft
                     : isComplete
@@ -911,7 +963,7 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
                 : "DRY RUN PAUSED",
         SyncCoordinatorState.Paused or SyncCoordinatorState.Faulted =>
             "BLOCKED · NO WRITES",
-        _ => IsDryRun ? "LIVE OFF · DRY RUN" : "LIVE READY · NO WRITES YET",
+        _ => IsDryRun ? "PREVIEW MODE · NOT STARTED" : "LIVE READY · NO WRITES YET",
     };
 
     public Brush RunModeBackground => coordinator.Status.State switch
@@ -1022,13 +1074,101 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
 
     public string StageLastSeen => stageLastData;
 
-    public string SetupProgressText =>
-        $"{CompletedSetupSteps}/4 setup steps ready";
+    public string SetupProgressText
+    {
+        get
+        {
+            var completedChecks = new List<string>(4);
+            if (BothIdentitiesPinned)
+            {
+                completedChecks.Add("console identities");
+            }
+
+            if (editableConfigurationIsValid &&
+                ChannelMappings.Any(static mapping => mapping.IsEnabled) &&
+                ScopeSelections.Any(static scope => scope.IsSelected))
+            {
+                completedChecks.Add("mapping and scopes");
+            }
+
+            if (connectionTestSucceeded)
+            {
+                completedChecks.Add("connection test");
+            }
+
+            if (hasCompletedDryRun)
+            {
+                completedChecks.Add("dry run");
+            }
+
+            var summary = completedChecks.Count == 0
+                ? "none yet"
+                : string.Join(" · ", completedChecks);
+            return $"Preparation: {completedChecks.Count}/4 checks complete · {summary}";
+        }
+    }
+
+    public bool IsRecoverableBlock =>
+        coordinator.Status.State is SyncCoordinatorState.Paused or SyncCoordinatorState.Faulted;
+
+    public string RecoverySafetyText =>
+        IsRecoverableBlock
+            ? "Writes are stopped. Recovery reconnects both consoles and reads their identity and status again. " +
+              "It does not apply cached changes or resume live automatically."
+            : string.Empty;
+
+    public string StopButtonText =>
+        coordinator.Status.State == SyncCoordinatorState.RunningDryRun
+            ? "Complete preview"
+            : "Stop";
+
+    public bool IsPreviewRunning => coordinator.Status.State == SyncCoordinatorState.RunningDryRun;
+
+    public string StopButtonHelpText => IsPreviewRunning
+        ? "Finish the write-free preview and mark it as reviewed."
+        : "Immediately block new synchronization writes.";
+
+    public bool ShowPreviewGuidance =>
+        coordinator.Status.State == SyncCoordinatorState.RunningDryRun ||
+        IsDryRun && hasCompletedDryRun;
+
+    public string PreviewGuidanceText =>
+        coordinator.Status.State == SyncCoordinatorState.RunningDryRun
+            ? "Preview active — make a few controlled changes on the SOURCE WING within the mapped channels and selected scopes. Confirm that they appear here as planned changes, and that unselected channels or scopes do not appear. No values are written to the target. When satisfied, choose Complete preview."
+            : "Preview completed. Review the activity below. If the expected mapped changes appeared and excluded scopes stayed absent, choose Continue to live review. A fresh diff and explicit confirmation are still required before any write.";
 
     public string SetupProgressIndicatorText =>
         CompletedSetupSteps == 4
             ? "✓"
             : CompletedSetupSteps.ToString(CultureInfo.CurrentCulture);
+
+    public bool IsMappingNextAction => BothIdentitiesPinned && ChannelMappings.Count == 0;
+
+    public bool IsConnectionNextAction => BothIdentitiesPinned && !connectionTestSucceeded;
+
+    public string StartupIdentityCheckText => BothIdentitiesPinned
+        ? "✓ Two consoles found and assigned to FOH and STAGE"
+        : "○ Two consoles have not been assigned yet";
+
+    public string StartupConfigurationCheckText => ChannelMappings.Count == 0
+        ? "○ No channel mappings configured; add or import mappings"
+        : editableConfigurationIsValid &&
+        ChannelMappings.Any(static mapping => mapping.IsEnabled) &&
+        ScopeSelections.Any(static scope => scope.IsSelected)
+            ? $"✓ {ChannelMappings.Count} channel mapping(s) loaded; review before use"
+            : $"○ {ChannelMappings.Count} channel mapping(s) loaded but need attention";
+
+    public string StartupConnectionCheckText => connectionTestSucceeded
+        ? "✓ Connections verified (currently disconnected)"
+        : "○ Verify both console connections";
+
+    public string StartupDryRunCheckText => hasCompletedDryRun
+        ? "✓ Safe preview completed"
+        : "○ Run a safe preview without console writes";
+
+    public string StartupDiscoveryExplanation => BothIdentitiesPinned
+        ? "WingSync found both consoles and assigned their reported serial numbers to FOH and STAGE. No synchronization connection is active. The connection test opens each connection, compares the identity, reads status data, and safely closes it again."
+        : "No complete console assignment is available yet. Open setup to discover or enter both consoles before testing their connections.";
 
     public string SetupProgressAccessibleText =>
         CompletedSetupSteps == 4
@@ -1050,6 +1190,11 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
                 return "Next step: find both consoles and verify their serial number.";
             }
 
+            if (!connectionTestSucceeded)
+            {
+                return "Next step: test the two connections and identities.";
+            }
+
             if (!editableConfigurationIsValid ||
                 !ChannelMappings.Any(static mapping => mapping.IsEnabled) ||
                 !ScopeSelections.Any(static scope => scope.IsSelected))
@@ -1057,14 +1202,9 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
                 return "Next step: choose scopes and verify the channel mapping.";
             }
 
-            if (!connectionTestSucceeded)
-            {
-                return "Next step: test the two connections and identities.";
-            }
-
             if (!hasCompletedDryRun)
             {
-                return "Next step: start a dry run and review the preview.";
+                return "Next step: generate a preview and review the planned changes in Activity.";
             }
 
             return IsDryRun
@@ -1098,10 +1238,8 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
         }
         else
         {
-            // First run and failed recovery both start from a deliberately small,
-            // dry-run-safe topology rather than inferring a live configuration.
-            ChannelMappings.Add(new ChannelMappingViewModel(1, 1, "Channel 1"));
-            AttachMappingHandlers();
+            // A new workspace never assumes which audio channels may be copied.
+            // The operator must deliberately create or auto-generate mappings.
             ApplySafeDefaultScopes();
         }
 
@@ -1275,10 +1413,13 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
             await Task.WhenAll(fohStatusTask, stageStatusTask);
             var fohStatus = await fohStatusTask;
             var stageStatus = await stageStatusTask;
+            var namesRead = await ResolveAllChannelNamesAsync(foh, stage, timeout.Token);
 
             DiscoveryStatus =
                 $"WAPI healthy: {fohIdentity.Name} ({fohStatus.Count} status values) and " +
-                $"{stageIdentity.Name} ({stageStatus.Count} status values).";
+                $"{stageIdentity.Name} ({stageStatus.Count} status values). " +
+                $"Read {namesRead}/{2 * (WingChannelLimits.LastInput + WingChannelLimits.LastAux)} " +
+                "channel names live from both consoles.";
             connectionTestSucceeded = true;
             var testedAt = DateTimeOffset.Now;
             fohLastData = FormatLastSeen(testedAt);
@@ -1287,6 +1428,7 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
             RefreshConsolePresentation();
             RaiseSetupProperties();
             ClearProblem();
+            SelectedPageIndex = 2;
             diagnostics.Record(
                 new DiagnosticEvent(
                     DiagnosticSeverity.Information,
@@ -1338,7 +1480,7 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
         ApplyValidation(validation);
         if (!validation.IsValid)
         {
-            SelectedPageIndex = 1;
+            SelectedPageIndex = 2;
             return;
         }
 
@@ -1363,7 +1505,7 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
             SetProblem(
                 "Setup not ready",
                 "Assign both consoles, verify their serial numbers, and check scopes and mapping.");
-            SelectedPageIndex = 1;
+            SelectedPageIndex = BothIdentitiesPinned ? 2 : 1;
             return;
         }
 
@@ -1377,15 +1519,14 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
         {
             IsDryRun = false;
             ClearProblem();
-            return;
         }
 
         if (!IsDryRun && !hasCompletedDryRun)
         {
             SetProblem(
                 "Dry run required",
-                "After the latest configuration change, first run a dry run and stop it deliberately.");
-            SelectedPageIndex = 1;
+                "After the latest mapping or scope change, generate a new preview and choose Complete preview.");
+            SelectedPageIndex = 2;
             return;
         }
 
@@ -1394,7 +1535,7 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
         ApplyValidation(validation);
         if (!validation.IsValid)
         {
-            SelectedPageIndex = 1;
+            SelectedPageIndex = 2;
             return;
         }
 
@@ -1429,6 +1570,10 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
                 confirmLiveInitialSync: false,
                 CancellationToken.None);
             RaiseRunProperties();
+            if (configuration.Safety.DryRun)
+            {
+                SelectedPageIndex = 3;
+            }
             if (!configuration.Safety.DryRun)
             {
                 await ReviewAndConfirmLiveInitialSyncAsync(configuration);
@@ -1484,6 +1629,26 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
             if (dialog.ShowDialog() != true)
             {
                 await coordinator.StopAsync(CancellationToken.None);
+                return;
+            }
+
+            if (dialog.StartFromCurrentBaseline)
+            {
+                await coordinator.StopAsync(CancellationToken.None);
+                var baselineConfiguration = new AppConfiguration(
+                    configuration.Foh,
+                    configuration.Monitor,
+                    configuration.Direction,
+                    InitialSync.PreviewOnly,
+                    configuration.Safety,
+                    configuration.Scopes,
+                    configuration.Channels);
+                await coordinator.StartAsync(
+                    baselineConfiguration,
+                    confirmLiveInitialSync: true,
+                    CancellationToken.None);
+                activeConfiguration = baselineConfiguration;
+                RaiseRunProperties();
                 return;
             }
 
@@ -1583,6 +1748,38 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
         await RefreshOfflineCachePresentationAsync();
         RaiseSetupProperties();
         RaiseRunProperties();
+    }
+
+    private async Task RecoverBlockedSessionAsync()
+    {
+        diagnostics.Record(
+            new DiagnosticEvent(
+                DiagnosticSeverity.Information,
+                "REMOTE_RECOVERY_STARTED",
+                "Operator started safe remote recovery; live writes remain disabled.",
+                "Recovery",
+                DateTimeOffset.UtcNow));
+
+        await coordinator.StopAsync(CancellationToken.None);
+        connectionTestSucceeded = false;
+        RaiseSetupProperties();
+        RaiseRunProperties();
+
+        await TestConnectionsAsync();
+        if (!connectionTestSucceeded)
+        {
+            SelectedPageIndex = 1;
+            return;
+        }
+
+        SelectedPageIndex = 2;
+        diagnostics.Record(
+            new DiagnosticEvent(
+                DiagnosticSeverity.Information,
+                "REMOTE_RECOVERY_CONNECTION_OK",
+                "Both consoles were re-identified and answered WAPI/status reads. Review mappings and run a new preview before live.",
+                "Recovery",
+                DateTimeOffset.UtcNow));
     }
 
     private AppConfiguration BuildConfiguration()
@@ -1702,17 +1899,21 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
 
     private void AutoMap()
     {
-        var overwritesCustomMapping =
-            ChannelMappings.Count > 1 ||
-            ChannelMappings.Count == 1 &&
-            (ChannelMappings[0].IsAux ||
-             ChannelMappings[0].SourceChannel != 1 ||
-             ChannelMappings[0].TargetChannel != 1);
-        if (overwritesCustomMapping &&
-            MessageBox.Show(
+        var rangeDialog = new MappingRangeWindow { Owner = Application.Current?.MainWindow };
+        if (rangeDialog.ShowDialog() != true)
+        {
+            return;
+        }
+
+        var rangeSummary = string.Join(
+            ", ",
+            rangeDialog.Ranges.Select(static range =>
+                $"{range.SourceFrom}–{range.SourceThrough} → {range.TargetFrom}"));
+        if (ChannelMappings.Count > 0 && MessageBox.Show(
                 Application.Current?.MainWindow,
-                "The current channel mapping will be replaced by INPUT 1 → 1 through 40 → 40.\n\nContinue?",
-                "Fill standard mapping",
+                $"The current mapping will be replaced by these INPUT ranges:\n" +
+                $"{rangeSummary}\n\nContinue?",
+                "Replace channel mapping",
                 MessageBoxButton.YesNo,
                 MessageBoxImage.Warning,
                 MessageBoxResult.No) != MessageBoxResult.Yes)
@@ -1721,15 +1922,17 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
         }
 
         ChannelMappings.Clear();
-        for (var channel = WingChannelLimits.FirstInput;
-             channel <= WingChannelLimits.LastInput;
-             channel++)
+        foreach (var range in rangeDialog.Ranges)
         {
-            ChannelMappings.Add(new ChannelMappingViewModel(channel, channel, $"CH {channel}"));
+            for (var source = range.SourceFrom; source <= range.SourceThrough; source++)
+            {
+                var target = range.TargetFrom + source - range.SourceFrom;
+                ChannelMappings.Add(new ChannelMappingViewModel(source, target, $"CH {source}"));
+            }
         }
 
         AttachMappingHandlers();
-        NotifyTopologyChanged();
+        NotifyPreviewConfigurationChanged();
     }
 
     private void AddMapping()
@@ -1749,7 +1952,7 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
         mapping.PropertyChanged += OnEditableConfigurationChanged;
         ChannelMappings.Add(mapping);
         SelectedMapping = mapping;
-        NotifyTopologyChanged();
+        NotifyPreviewConfigurationChanged();
     }
 
     private void AddAuxMapping()
@@ -1773,7 +1976,7 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
         mapping.PropertyChanged += OnEditableConfigurationChanged;
         ChannelMappings.Add(mapping);
         SelectedMapping = mapping;
-        NotifyTopologyChanged();
+        NotifyPreviewConfigurationChanged();
     }
 
     private void RemoveSelectedMapping()
@@ -1786,7 +1989,269 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
         SelectedMapping.PropertyChanged -= OnEditableConfigurationChanged;
         ChannelMappings.Remove(SelectedMapping);
         SelectedMapping = null;
-        NotifyTopologyChanged();
+        NotifyPreviewConfigurationChanged();
+    }
+
+    private void RemoveMapping(ChannelMappingViewModel mapping)
+    {
+        mapping.PropertyChanged -= OnEditableConfigurationChanged;
+        if (!ChannelMappings.Remove(mapping))
+        {
+            return;
+        }
+
+        if (ReferenceEquals(SelectedMapping, mapping))
+        {
+            SelectedMapping = null;
+        }
+
+        NotifyPreviewConfigurationChanged();
+    }
+
+    private async Task<int> ResolveAllChannelNamesAsync(
+        IWingSession foh,
+        IWingSession stage,
+        CancellationToken cancellationToken)
+    {
+        var fohTask = ReadConsoleChannelNamesAsync(foh, cancellationToken);
+        var stageTask = ReadConsoleChannelNamesAsync(stage, cancellationToken);
+        await Task.WhenAll(fohTask, stageTask);
+
+        ReplaceChannelNames(fohChannelNames, await fohTask);
+        ReplaceChannelNames(stageChannelNames, await stageTask);
+        ApplyResolvedChannelNames();
+        return fohChannelNames.Count + stageChannelNames.Count;
+    }
+
+    private static async Task<Dictionary<string, string>> ReadConsoleChannelNamesAsync(
+        IWingSession session,
+        CancellationToken cancellationToken)
+    {
+        var result = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var (family, maximum) in new[]
+                 {
+                     ("ch", WingChannelLimits.LastInput),
+                     ("aux", WingChannelLimits.LastAux),
+                 })
+        {
+            for (var channel = 1; channel <= maximum; channel++)
+            {
+                var token = $"/{family}/{channel}/name";
+                var name = await ReadChannelNameAsync(session, token, cancellationToken);
+                if (name is not null)
+                {
+                    result[ChannelNameKey(family == "aux", channel)] = name;
+                }
+            }
+        }
+
+        return result;
+    }
+
+    private static async Task<string?> ReadChannelNameAsync(
+        IWingSession session,
+        string token,
+        CancellationToken cancellationToken)
+    {
+        for (var attempt = 1; attempt <= 3; attempt++)
+        {
+            try
+            {
+                var snapshot = await session.SnapshotAsync(token, cancellationToken);
+                var value = snapshot.FirstOrDefault(parameter =>
+                        parameter.TokenPath.Equals(token, StringComparison.OrdinalIgnoreCase))?.Value;
+                if (value is { Type: WingValueType.S })
+                {
+                    var name = value.Value.AsString().Trim();
+                    return name.Length == 0 ? "(unnamed)" : name;
+                }
+            }
+            catch (Exception exception) when (
+                exception is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
+            {
+                // A WING can briefly return no value while other WAPI traffic is active.
+            }
+
+            if (attempt < 3)
+            {
+                await Task.Delay(TimeSpan.FromMilliseconds(40), cancellationToken);
+            }
+        }
+
+        return null;
+    }
+
+    private static void ReplaceChannelNames(
+        Dictionary<string, string> destination,
+        IReadOnlyDictionary<string, string> source)
+    {
+        destination.Clear();
+        foreach (var pair in source)
+        {
+            destination[pair.Key] = pair.Value;
+        }
+    }
+
+    private void ApplyResolvedChannelNames()
+    {
+        var sourceNames = SelectedDirection.Direction == SyncDirection.MonitorToFoh
+            ? stageChannelNames
+            : fohChannelNames;
+        var targetNames = SelectedDirection.Direction == SyncDirection.MonitorToFoh
+            ? fohChannelNames
+            : stageChannelNames;
+        foreach (var mapping in ChannelMappings)
+        {
+            var sourceKey = ChannelNameKey(mapping.IsAux, mapping.SourceChannel);
+            var targetKey = ChannelNameKey(mapping.IsAux, mapping.TargetChannel);
+            mapping.SetResolvedNames(
+                sourceNames.GetValueOrDefault(sourceKey),
+                targetNames.GetValueOrDefault(targetKey));
+        }
+    }
+
+    private static string ChannelNameKey(bool isAux, int channel) =>
+        $"{(isAux ? "aux" : "ch")}:{channel}";
+
+    private void SwapConsoleAssignments()
+    {
+        var previousFoh = SelectedFohWing;
+        var previousStage = SelectedStageWing;
+        if (previousFoh is null || previousStage is null)
+        {
+            return;
+        }
+
+        SelectedFohWing = previousStage;
+        SelectedStageWing = previousFoh;
+        OnPropertyChanged(nameof(StartupDiscoveryExplanation));
+        OnPropertyChanged(nameof(IsMappingNextAction));
+        OnPropertyChanged(nameof(IsConnectionNextAction));
+    }
+
+    private void ImportMappings()
+    {
+        var dialog = new OpenFileDialog
+        {
+            Title = "Import WingSync channel mappings",
+            Filter = "WingSync mapping files (*.json)|*.json|All files (*.*)|*.*",
+            CheckFileExists = true,
+        };
+        if (dialog.ShowDialog() != true)
+        {
+            return;
+        }
+
+        try
+        {
+            var document = JsonSerializer.Deserialize<MappingFile>(
+                File.ReadAllText(dialog.FileName),
+                MappingJsonOptions);
+            if (document is null || document.Version != 1 || document.Mappings is null)
+            {
+                throw new InvalidDataException("The file is not a supported WingSync mapping file.");
+            }
+
+            ValidateImportedMappings(document.Mappings);
+            foreach (var mapping in ChannelMappings)
+            {
+                mapping.PropertyChanged -= OnEditableConfigurationChanged;
+            }
+
+            ChannelMappings.Clear();
+            foreach (var row in document.Mappings)
+            {
+                var mapping = new ChannelMappingViewModel(
+                    row.Source,
+                    row.Target,
+                    row.Label,
+                    row.Type.Equals("aux", StringComparison.OrdinalIgnoreCase))
+                {
+                    IsEnabled = row.Enabled,
+                };
+                mapping.PropertyChanged += OnEditableConfigurationChanged;
+                ChannelMappings.Add(mapping);
+            }
+
+            SelectedMapping = ChannelMappings.FirstOrDefault();
+            NotifyPreviewConfigurationChanged();
+            MessageBox.Show(
+                $"Imported {ChannelMappings.Count} channel mapping(s). Review them before saving.",
+                "Mappings imported",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
+        }
+        catch (Exception exception) when (exception is IOException or JsonException or InvalidDataException)
+        {
+            MessageBox.Show(
+                $"The mappings were not imported. The current mappings were left unchanged.\n\n{exception.Message}",
+                "Mapping import failed",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+        }
+    }
+
+    private void ExportMappings()
+    {
+        var dialog = new SaveFileDialog
+        {
+            Title = "Export WingSync channel mappings",
+            Filter = "WingSync mapping files (*.json)|*.json",
+            DefaultExt = ".json",
+            AddExtension = true,
+            FileName = "wingsync-mappings.json",
+        };
+        if (dialog.ShowDialog() != true)
+        {
+            return;
+        }
+
+        var document = new MappingFile(
+            1,
+            ChannelMappings.Select(static mapping => new MappingFileRow(
+                mapping.IsAux ? "aux" : "input",
+                mapping.SourceChannel,
+                mapping.TargetChannel,
+                mapping.IsEnabled,
+                mapping.Label)).ToArray());
+        File.WriteAllText(dialog.FileName, JsonSerializer.Serialize(document, MappingJsonOptions));
+    }
+
+    private static void ValidateImportedMappings(IReadOnlyList<MappingFileRow> mappings)
+    {
+        if (mappings.Count == 0)
+        {
+            throw new InvalidDataException("The mapping file contains no rows.");
+        }
+
+        var sources = new HashSet<(string Type, int Channel)>();
+        var targets = new HashSet<(string Type, int Channel)>();
+        foreach (var mapping in mappings)
+        {
+            var type = mapping.Type?.Trim().ToLowerInvariant();
+            var maximum = type switch
+            {
+                "input" => WingChannelLimits.LastInput,
+                "aux" => WingChannelLimits.LastAux,
+                _ => throw new InvalidDataException($"Unknown channel type '{mapping.Type}'. Use 'input' or 'aux'."),
+            };
+            if (mapping.Source < 1 || mapping.Source > maximum ||
+                mapping.Target < 1 || mapping.Target > maximum)
+            {
+                throw new InvalidDataException(
+                    $"{type} mapping {mapping.Source} → {mapping.Target} is outside the supported range 1–{maximum}.");
+            }
+
+            if (!sources.Add((type, mapping.Source)))
+            {
+                throw new InvalidDataException($"{type} source channel {mapping.Source} occurs more than once.");
+            }
+
+            if (!targets.Add((type, mapping.Target)))
+            {
+                throw new InvalidDataException($"{type} target channel {mapping.Target} occurs more than once.");
+            }
+        }
     }
 
     private void AttachMappingHandlers()
@@ -1800,16 +2265,74 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
 
     private void OnEditableConfigurationChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(ChannelMappingViewModel.ValidationText))
+        if (e.PropertyName is nameof(ChannelMappingViewModel.ValidationText) or
+            nameof(ChannelMappingViewModel.SourceDisplayName) or
+            nameof(ChannelMappingViewModel.TargetDisplayName))
         {
             return;
         }
 
-        NotifyTopologyChanged();
+        if (sender is ChannelMappingViewModel mapping &&
+            e.PropertyName is nameof(ChannelMappingViewModel.SourceChannelText) or
+                nameof(ChannelMappingViewModel.TargetChannelText) or
+                nameof(ChannelMappingViewModel.IsAux))
+        {
+            ApplyResolvedChannelNames(mapping);
+        }
+
+        if (sender is ChannelMappingViewModel or ScopeSelectionViewModel)
+        {
+            NotifyPreviewConfigurationChanged();
+        }
+        else
+        {
+            NotifyTopologyChanged();
+        }
     }
 
     private void NotifyConfigurationChanged()
     {
+        ValidateEditableConfiguration();
+        RaiseRunProperties();
+        RaiseSetupProperties();
+    }
+
+    private void ApplyResolvedChannelNames(ChannelMappingViewModel mapping)
+    {
+        var sourceNames = SelectedDirection.Direction == SyncDirection.MonitorToFoh
+            ? stageChannelNames
+            : fohChannelNames;
+        var targetNames = SelectedDirection.Direction == SyncDirection.MonitorToFoh
+            ? fohChannelNames
+            : stageChannelNames;
+        mapping.SetResolvedNames(
+            sourceNames.GetValueOrDefault(ChannelNameKey(mapping.IsAux, mapping.SourceChannel)),
+            targetNames.GetValueOrDefault(ChannelNameKey(mapping.IsAux, mapping.TargetChannel)));
+    }
+
+    private void NotifyPreviewConfigurationChanged()
+    {
+        if (!suppressLiveSafetyReset)
+        {
+            hasCompletedDryRun = false;
+            var resetToSafeMode = false;
+            if (!isDryRun)
+            {
+                SetProperty(ref isDryRun, true, nameof(IsDryRun));
+                resetToSafeMode = true;
+            }
+
+            if (allowHighRiskWrites)
+            {
+                SetProperty(ref allowHighRiskWrites, false, nameof(AllowHighRiskWrites));
+                resetToSafeMode = true;
+            }
+
+            ConfigurationSafetyNotice = resetToSafeMode
+                ? "Mapping or scopes changed: live approval was revoked. Generate a new preview."
+                : "Mapping or scopes changed: generate a new preview. The connection test remains valid.";
+        }
+
         ValidateEditableConfiguration();
         RaiseRunProperties();
         RaiseSetupProperties();
@@ -1960,7 +2483,7 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
             OverallStatusText = newStatus.State switch
             {
                 SyncCoordinatorState.Stopped => "Not started",
-                SyncCoordinatorState.RunningDryRun => "Dry run active",
+                SyncCoordinatorState.RunningDryRun => "Preview active · no writes",
                 SyncCoordinatorState.RunningLive => "Live active",
                 SyncCoordinatorState.ApplyingLive => "Applying live",
                 SyncCoordinatorState.Reconnecting => "Reconnecting",
@@ -1979,7 +2502,7 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
             };
             FlowStatusText = newStatus.State switch
             {
-                SyncCoordinatorState.RunningDryRun => "PREVIEW",
+                SyncCoordinatorState.RunningDryRun => "PREVIEW · NO WRITES",
                 SyncCoordinatorState.RunningLive => "SYNCHRONIZING",
                 SyncCoordinatorState.ApplyingLive => "WRITING + READING BACK",
                 SyncCoordinatorState.Reconnecting => "PAUSED",
@@ -1995,7 +2518,7 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
             var reconnecting = newStatus.State is SyncCoordinatorState.Connecting
                 or SyncCoordinatorState.Reconnecting;
             SetConsoleStatus(
-                connected ? "Connected" : reconnecting ? "Connecting…" : "Offline",
+                connected ? "Connected" : reconnecting ? "Connecting…" : "Not connected",
                 connected ? Green : reconnecting ? Orange : Gray,
                 connected ? GreenSoft : reconnecting ? OrangeSoft : GraySoft);
             var snapshotReady = newStatus.State is
@@ -2019,12 +2542,15 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
 
             if (newStatus.State is SyncCoordinatorState.Paused or SyncCoordinatorState.Faulted)
             {
-                SetProblem("Synchronization paused", newStatus.Detail);
+                SetProblem(
+                    "Synchronization blocked — writes stopped",
+                    $"{newStatus.Detail} Use Recover safely to re-identify and test both consoles remotely. " +
+                    "Live will not restart automatically.");
             }
             else if (
                 (newStatus.State is
                     SyncCoordinatorState.RunningDryRun or SyncCoordinatorState.RunningLive) &&
-                PrimaryProblemTitle == "Synchronization paused")
+                PrimaryProblemTitle.StartsWith("Synchronization blocked", StringComparison.Ordinal))
             {
                 ClearProblem();
             }
@@ -2048,7 +2574,41 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
     private void OnDiagnosticRecorded(object? sender, DiagnosticEvent diagnosticEvent)
     {
         CapturePreviewAuditEntry(diagnosticEvent);
-        Dispatch(() =>
+        if (diagnosticEvent.Severity >= DiagnosticSeverity.Error)
+        {
+            Dispatch(() => SetProblem(diagnosticEvent.Code, diagnosticEvent.Message));
+        }
+
+        pendingActivityDiagnostics.Enqueue(diagnosticEvent);
+        ScheduleActivityFlush();
+    }
+
+    private void ScheduleActivityFlush()
+    {
+        if (Interlocked.CompareExchange(ref activityFlushScheduled, 1, 0) != 0)
+        {
+            return;
+        }
+
+        var dispatcher = Application.Current?.Dispatcher;
+        if (dispatcher is null)
+        {
+            FlushActivityDiagnostics();
+            return;
+        }
+
+        dispatcher.BeginInvoke(
+            System.Windows.Threading.DispatcherPriority.Background,
+            new Action(FlushActivityDiagnostics));
+    }
+
+    private void FlushActivityDiagnostics()
+    {
+        const int MaximumItemsPerUiTurn = 100;
+        for (var index = 0;
+             index < MaximumItemsPerUiTurn &&
+             pendingActivityDiagnostics.TryDequeue(out var diagnosticEvent);
+             index++)
         {
             var details = diagnosticEvent.Properties is null
                 ? string.Empty
@@ -2066,16 +2626,18 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
                     diagnosticEvent.Source,
                     diagnosticEvent.Message,
                     details));
-            while (activityItems.Count > 2_000)
-            {
-                activityItems.RemoveAt(activityItems.Count - 1);
-            }
+        }
 
-            if (diagnosticEvent.Severity >= DiagnosticSeverity.Error)
-            {
-                SetProblem(diagnosticEvent.Code, diagnosticEvent.Message);
-            }
-        });
+        while (activityItems.Count > 2_000)
+        {
+            activityItems.RemoveAt(activityItems.Count - 1);
+        }
+
+        Interlocked.Exchange(ref activityFlushScheduled, 0);
+        if (!pendingActivityDiagnostics.IsEmpty)
+        {
+            ScheduleActivityFlush();
+        }
     }
 
     private void CapturePreviewAuditEntry(DiagnosticEvent diagnosticEvent)
@@ -2477,6 +3039,8 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
     private void RaiseRunProperties()
     {
         OnPropertyChanged(nameof(IsRunning));
+        OnPropertyChanged(nameof(IsRecoverableBlock));
+        OnPropertyChanged(nameof(RecoverySafetyText));
         OnPropertyChanged(nameof(CanStart));
         OnPropertyChanged(nameof(CanPrimaryAction));
         OnPropertyChanged(nameof(CanSelectLiveMode));
@@ -2485,6 +3049,11 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
         OnPropertyChanged(nameof(IsEditorEnabled));
         OnPropertyChanged(nameof(CanArmHighRisk));
         OnPropertyChanged(nameof(StartButtonText));
+        OnPropertyChanged(nameof(StopButtonText));
+        OnPropertyChanged(nameof(IsPreviewRunning));
+        OnPropertyChanged(nameof(StopButtonHelpText));
+        OnPropertyChanged(nameof(ShowPreviewGuidance));
+        OnPropertyChanged(nameof(PreviewGuidanceText));
         OnPropertyChanged(nameof(StartButtonHelpText));
         OnPropertyChanged(nameof(RunModeText));
         OnPropertyChanged(nameof(RunModeBackground));
@@ -2493,6 +3062,7 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
         OnPropertyChanged(nameof(WorkflowSteps));
         StartCommand.RaiseCanExecuteChanged();
         StopCommand.RaiseCanExecuteChanged();
+        RecoverBlockedSessionCommand.RaiseCanExecuteChanged();
         DiscoverCommand.RaiseCanExecuteChanged();
         TestConnectionsCommand.RaiseCanExecuteChanged();
         SaveConfigurationCommand.RaiseCanExecuteChanged();
@@ -2500,6 +3070,10 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
         AddMappingCommand.RaiseCanExecuteChanged();
         AddAuxMappingCommand.RaiseCanExecuteChanged();
         RemoveMappingsCommand.RaiseCanExecuteChanged();
+        RemoveMappingCommand.RaiseCanExecuteChanged();
+        ImportMappingsCommand.RaiseCanExecuteChanged();
+        ExportMappingsCommand.RaiseCanExecuteChanged();
+        SwapAssignmentsCommand.RaiseCanExecuteChanged();
         RebuildCacheCommand.RaiseCanExecuteChanged();
         ExportSupportBundleCommand.RaiseCanExecuteChanged();
     }
@@ -2512,6 +3086,13 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
         OnPropertyChanged(nameof(SetupProgressBackground));
         OnPropertyChanged(nameof(SetupProgressForeground));
         OnPropertyChanged(nameof(NextStepText));
+        OnPropertyChanged(nameof(StartupIdentityCheckText));
+        OnPropertyChanged(nameof(StartupConfigurationCheckText));
+        OnPropertyChanged(nameof(StartupConnectionCheckText));
+        OnPropertyChanged(nameof(StartupDryRunCheckText));
+        OnPropertyChanged(nameof(StartupDiscoveryExplanation));
+        OnPropertyChanged(nameof(IsMappingNextAction));
+        OnPropertyChanged(nameof(IsConnectionNextAction));
         OnPropertyChanged(nameof(WorkflowSteps));
     }
 
@@ -2693,6 +3274,13 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
             SelectedStageWing!.Wing.SerialNumber,
             StringComparison.OrdinalIgnoreCase);
 
+    private static bool IsConnectionProblem(string title) =>
+        title.Contains("connection", StringComparison.OrdinalIgnoreCase) ||
+        title.Contains("console", StringComparison.OrdinalIgnoreCase) ||
+        title.Contains("WAPI", StringComparison.OrdinalIgnoreCase) ||
+        title.Contains("identity", StringComparison.OrdinalIgnoreCase) ||
+        title.Contains("network", StringComparison.OrdinalIgnoreCase);
+
     private bool IsSetupReady =>
         BothIdentitiesPinned &&
         editableConfigurationIsValid &&
@@ -2839,7 +3427,8 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
         for (var channel = 1; channel <= WingChannelLimits.LastInput; channel++)
         {
             var prefix = $"/ch/{channel}";
-            state[$"{prefix}/name"] = WingValue.FromString($"CH {channel:00}");
+            state[$"{prefix}/name"] = WingValue.FromString(
+                isTarget ? $"STAGE {channel:00}" : $"FOH {channel:00}");
             state[$"{prefix}/col"] = WingValue.FromInt32((channel % 8) + 1);
             state[$"{prefix}/icon"] = WingValue.FromInt32(1);
             state[$"{prefix}/led"] = WingValue.FromInt32(1);
@@ -2881,5 +3470,20 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
         string LastData,
         DateTimeOffset? CapturedAt,
         bool HasSnapshot);
+
+    private static readonly JsonSerializerOptions MappingJsonOptions = new()
+    {
+        PropertyNameCaseInsensitive = true,
+        WriteIndented = true,
+    };
+
+    private sealed record MappingFile(int Version, IReadOnlyList<MappingFileRow> Mappings);
+
+    private sealed record MappingFileRow(
+        string Type,
+        int Source,
+        int Target,
+        bool Enabled,
+        string Label);
 
 }

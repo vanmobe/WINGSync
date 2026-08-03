@@ -340,6 +340,14 @@ internal static class TokenAndScopeTests
             WingValue.FromString("CH.9"),
             mapping);
         AssertEx.Equal(TokenRewriteStatus.UnresolvedSidechainReference, unresolved.Status);
+
+        var identityNumbering = new ChannelMapping([new InputChannelMapping(2, 2)]);
+        var preservedIdentityReference = ScopeCatalog.Rewrite(
+            TokenPath.Parse("/ch/2/gatesc/src"),
+            WingValue.FromString("CH.1"),
+            identityNumbering);
+        AssertEx.True(preservedIdentityReference.IsSuccess);
+        AssertEx.Equal("CH.1", preservedIdentityReference.TargetValue!.Value.AsString());
     }
 
     private static void PreservesNonChannelSidechainValues()

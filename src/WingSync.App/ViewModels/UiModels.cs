@@ -103,6 +103,8 @@ public sealed class ChannelMappingViewModel : ObservableObject
     private string targetChannelText;
     private string label = string.Empty;
     private string validationText = "OK";
+    private string? sourceName;
+    private string? targetName;
 
     public ChannelMappingViewModel(
         int sourceChannel,
@@ -130,6 +132,8 @@ public sealed class ChannelMappingViewModel : ObservableObject
             if (SetProperty(ref isAux, value))
             {
                 OnPropertyChanged(nameof(ChannelType));
+                OnPropertyChanged(nameof(SourceDisplayName));
+                OnPropertyChanged(nameof(TargetDisplayName));
             }
         }
     }
@@ -139,13 +143,27 @@ public sealed class ChannelMappingViewModel : ObservableObject
     public string SourceChannelText
     {
         get => sourceChannelText;
-        set => SetProperty(ref sourceChannelText, value ?? string.Empty);
+        set
+        {
+            if (SetProperty(ref sourceChannelText, value ?? string.Empty))
+            {
+                sourceName = null;
+                OnPropertyChanged(nameof(SourceDisplayName));
+            }
+        }
     }
 
     public string TargetChannelText
     {
         get => targetChannelText;
-        set => SetProperty(ref targetChannelText, value ?? string.Empty);
+        set
+        {
+            if (SetProperty(ref targetChannelText, value ?? string.Empty))
+            {
+                targetName = null;
+                OnPropertyChanged(nameof(TargetDisplayName));
+            }
+        }
     }
 
     public int SourceChannel =>
@@ -176,6 +194,22 @@ public sealed class ChannelMappingViewModel : ObservableObject
     {
         get => validationText;
         set => SetProperty(ref validationText, value);
+    }
+
+    public string SourceDisplayName => string.IsNullOrWhiteSpace(sourceName)
+        ? $"Not read · {ChannelType} {SourceChannel}"
+        : sourceName;
+
+    public string TargetDisplayName => string.IsNullOrWhiteSpace(targetName)
+        ? $"Not read · {ChannelType} {TargetChannel}"
+        : targetName;
+
+    public void SetResolvedNames(string? source, string? target)
+    {
+        sourceName = string.IsNullOrWhiteSpace(source) ? null : source.Trim();
+        targetName = string.IsNullOrWhiteSpace(target) ? null : target.Trim();
+        OnPropertyChanged(nameof(SourceDisplayName));
+        OnPropertyChanged(nameof(TargetDisplayName));
     }
 }
 

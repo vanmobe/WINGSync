@@ -9,6 +9,8 @@ public partial class LiveDiffReviewWindow : Window
 {
     private readonly bool highRiskArmed;
 
+    public bool StartFromCurrentBaseline { get; private set; }
+
     public LiveDiffReviewWindow(LiveDiffReviewViewModel viewModel)
     {
         ArgumentNullException.ThrowIfNull(viewModel);
@@ -18,6 +20,7 @@ public partial class LiveDiffReviewWindow : Window
         highRiskArmed = viewModel.HighRiskArmed;
         HighRiskPanel.Visibility = highRiskArmed ? Visibility.Visible : Visibility.Collapsed;
         ApproveButton.IsEnabled = !highRiskArmed;
+        StartFromNowButton.IsEnabled = !highRiskArmed;
         ContentRendered += (_, _) =>
         {
             _ = Activate();
@@ -49,6 +52,7 @@ public partial class LiveDiffReviewWindow : Window
     {
         ApproveButton.IsEnabled =
             !highRiskArmed || HighRiskAcknowledgement.IsChecked == true;
+        StartFromNowButton.IsEnabled = ApproveButton.IsEnabled;
     }
 
     private void OnApprove(object sender, RoutedEventArgs e)
@@ -58,6 +62,17 @@ public partial class LiveDiffReviewWindow : Window
             return;
         }
 
+        DialogResult = true;
+    }
+
+    private void OnStartFromNow(object sender, RoutedEventArgs e)
+    {
+        if (highRiskArmed && HighRiskAcknowledgement.IsChecked != true)
+        {
+            return;
+        }
+
+        StartFromCurrentBaseline = true;
         DialogResult = true;
     }
 }

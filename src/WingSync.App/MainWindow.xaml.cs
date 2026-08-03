@@ -1,6 +1,9 @@
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Controls;
+using System.Windows.Media;
+using WingSync.App.Dialogs;
 using WingSync.App.ViewModels;
 
 namespace WingSync.App;
@@ -51,6 +54,7 @@ public partial class MainWindow : Window
                 Key.D2 or Key.NumPad2 => 1,
                 Key.D3 or Key.NumPad3 => 2,
                 Key.D4 or Key.NumPad4 => 3,
+                Key.D5 or Key.NumPad5 => 4,
                 _ => -1,
             };
 
@@ -70,6 +74,66 @@ public partial class MainWindow : Window
             }
 
             e.Handled = true;
+        }
+    }
+
+    private void OnPreviewMouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        if (e.OriginalSource is not DependencyObject source)
+        {
+            return;
+        }
+
+        var inner = FindAncestorScrollViewer(source);
+        if (inner is null || CanScroll(inner, e.Delta))
+        {
+            return;
+        }
+
+        var outer = FindAncestorScrollViewer(GetVisualParent(inner));
+        if (outer is null || outer.ScrollableHeight <= 0)
+        {
+            return;
+        }
+
+        outer.ScrollToVerticalOffset(
+            Math.Clamp(outer.VerticalOffset - e.Delta, 0, outer.ScrollableHeight));
+        e.Handled = true;
+    }
+
+    private static bool CanScroll(ScrollViewer viewer, int delta) =>
+        viewer.ScrollableHeight > 0 &&
+        (delta > 0 ? viewer.VerticalOffset > 0 : viewer.VerticalOffset < viewer.ScrollableHeight);
+
+    private static ScrollViewer? FindAncestorScrollViewer(DependencyObject? current)
+    {
+        while (current is not null)
+        {
+            if (current is ScrollViewer viewer)
+            {
+                return viewer;
+            }
+
+            current = GetVisualParent(current);
+        }
+
+        return null;
+    }
+
+    private static DependencyObject? GetVisualParent(DependencyObject? element)
+    {
+        if (element is null)
+        {
+            return null;
+        }
+
+        try
+        {
+            return VisualTreeHelper.GetParent(element);
+        }
+        catch (InvalidOperationException)
+        {
+            return LogicalTreeHelper.GetParent(element);
         }
     }
 
@@ -94,6 +158,21 @@ public partial class MainWindow : Window
 
                 _viewModel = viewModel;
                 DataContext = viewModel;
+                var skipStartupGuidance = Environment.GetCommandLineArgs().Any(
+                    static argument => argument.Equals(
+                        "--skip-startup-guidance",
+                        StringComparison.OrdinalIgnoreCase));
+                if (!skipStartupGuidance)
+                {
+                    var startupGuidance = new StartupGuidanceWindow(viewModel)
+                    {
+                        Owner = this,
+                    };
+                    if (startupGuidance.ShowDialog() == true)
+                    {
+                    viewModel.SelectedPageIndex = 1;
+                    }
+                }
                 return;
             }
             catch (Exception exception)

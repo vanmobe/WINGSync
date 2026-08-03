@@ -225,6 +225,9 @@ internal sealed class ScriptedWingSession : IWingSession
         state[Normalize(tokenPath)] = value;
     }
 
+    public bool RemoveSilently(string tokenPath) =>
+        state.TryRemove(Normalize(tokenPath), out _);
+
     public WingValue GetValue(string tokenPath) =>
         state.TryGetValue(Normalize(tokenPath), out var value)
             ? value
@@ -431,7 +434,7 @@ internal sealed class CoalescingDelayGateClock : IClock
 
     public async Task Delay(TimeSpan delay, CancellationToken cancellationToken)
     {
-        if (delay == TimeSpan.FromMilliseconds(25) &&
+        if (delay == TimeSpan.FromMilliseconds(75) &&
             Interlocked.CompareExchange(ref gated, 1, 0) == 0)
         {
             entered.TrySetResult(true);

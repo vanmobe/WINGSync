@@ -37,6 +37,47 @@ public sealed class RelayCommand : ICommand
     public void RaiseCanExecuteChanged() => CanExecuteChanged?.Invoke(this, EventArgs.Empty);
 }
 
+public sealed class RelayCommand<T> : ICommand where T : class
+{
+    private readonly Action<T> execute;
+    private readonly Func<T, bool>? canExecute;
+    private readonly Action<Exception>? onError;
+
+    public RelayCommand(
+        Action<T> execute,
+        Func<T, bool>? canExecute = null,
+        Action<Exception>? onError = null)
+    {
+        this.execute = execute ?? throw new ArgumentNullException(nameof(execute));
+        this.canExecute = canExecute;
+        this.onError = onError;
+    }
+
+    public event EventHandler? CanExecuteChanged;
+
+    public bool CanExecute(object? parameter) =>
+        parameter is T value && (canExecute?.Invoke(value) ?? true);
+
+    public void Execute(object? parameter)
+    {
+        if (parameter is not T value)
+        {
+            return;
+        }
+
+        try
+        {
+            execute(value);
+        }
+        catch (Exception exception) when (onError is not null)
+        {
+            onError(exception);
+        }
+    }
+
+    public void RaiseCanExecuteChanged() => CanExecuteChanged?.Invoke(this, EventArgs.Empty);
+}
+
 public sealed class AsyncRelayCommand : ICommand
 {
     private readonly Func<Task> execute;

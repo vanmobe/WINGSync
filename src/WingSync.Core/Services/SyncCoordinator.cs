@@ -154,6 +154,7 @@ public sealed class SyncCoordinator : IAsyncDisposable
     private DiscoveredWing? fohIdentity;
     private DiscoveredWing? monitorIdentity;
     private WritePlan? pendingInitialPlan;
+    private FreshPlanSnapshot? pendingInitialSnapshot;
     private InitialSyncPreviewSummary? pendingInitialPreview;
     private SyncCoordinatorStatus status;
     private long activeEpoch;
@@ -291,6 +292,7 @@ public sealed class SyncCoordinator : IAsyncDisposable
                 var initialSnapshot = await BuildFreshPlanAsync(cancellationToken).ConfigureAwait(false);
                 var initialPlan = initialSnapshot.Plan;
                 pendingInitialPlan = initialPlan;
+                pendingInitialSnapshot = initialSnapshot;
                 RecordPlanningFindings(initialPlan);
                 ThrowIfStopRequested(
                     startStopFence,
@@ -353,6 +355,7 @@ public sealed class SyncCoordinator : IAsyncDisposable
                     startStopFence,
                     "A stop request blocked activation of the event stream.");
                 pendingInitialPlan = null;
+                pendingInitialSnapshot = null;
                 pendingInitialPreview = null;
                 EnableEventIntake(initialSnapshot);
                 ChangeStatus(
@@ -416,7 +419,10 @@ public sealed class SyncCoordinator : IAsyncDisposable
 
             // Confirmation approves a diff, not merely an action. A changed diff
             // must be shown again instead of inheriting the earlier approval.
-            var freshSnapshot = await BuildFreshPlanAsync(cancellationToken).ConfigureAwait(false);
+            var freshSnapshot = pendingInitialSnapshot is { WasInvalidated: false } &&
+                IsSnapshotCurrent(pendingInitialSnapshot)
+                    ? pendingInitialSnapshot
+                    : await BuildFreshPlanAsync(cancellationToken).ConfigureAwait(false);
             var freshPlan = freshSnapshot.Plan;
             RecordPlanningFindings(freshPlan);
             ThrowIfStopRequested(
@@ -434,6 +440,7 @@ public sealed class SyncCoordinator : IAsyncDisposable
                 }
 
                 pendingInitialPlan = freshPlan;
+                pendingInitialSnapshot = freshSnapshot;
                 pendingInitialPreview = CreatePreviewSummary(freshPlan);
                 liveWritesArmed = false;
                 await PreviewPlanAsync(freshPlan).ConfigureAwait(false);
@@ -453,6 +460,7 @@ public sealed class SyncCoordinator : IAsyncDisposable
                 freshPlan = freshSnapshot.Plan;
                 RecordPlanningFindings(freshPlan);
                 pendingInitialPlan = freshPlan;
+                pendingInitialSnapshot = freshSnapshot;
                 pendingInitialPreview = CreatePreviewSummary(freshPlan);
                 liveWritesArmed = false;
                 await PreviewPlanAsync(freshPlan).ConfigureAwait(false);
@@ -489,6 +497,7 @@ public sealed class SyncCoordinator : IAsyncDisposable
                 confirmationStopFence,
                 "A stop request blocked activation of the event stream.");
             pendingInitialPlan = null;
+            pendingInitialSnapshot = null;
             pendingInitialPreview = null;
             EnableEventIntake(freshSnapshot);
             ChangeStatus(
@@ -568,6 +577,7 @@ public sealed class SyncCoordinator : IAsyncDisposable
         {
             var replacement = await BuildFreshPlanAsync(cancellationToken).ConfigureAwait(false);
             pendingInitialPlan = replacement.Plan;
+            pendingInitialSnapshot = replacement;
             pendingInitialPreview = CreatePreviewSummary(replacement.Plan);
             RecordPlanningFindings(replacement.Plan);
             await PreviewPlanAsync(replacement.Plan).ConfigureAwait(false);
@@ -819,6 +829,23 @@ public sealed class SyncCoordinator : IAsyncDisposable
                     wasInvalidated);
             }
 
+            var stabilized = await TryStabilizeSnapshotIncrementallyAsync(cancellationToken)
+                .ConfigureAwait(false);
+            if (stabilized is not null)
+            {
+                Record(
+                    DiagnosticSeverity.Information,
+                    "SNAPSHOT_INCREMENTALLY_STABILIZED",
+                    "Console changes during the baseline scan were incorporated with exact incremental reads.",
+                    "Synchronization");
+                return new FreshPlanSnapshot(
+                    stabilized.Value.Plan,
+                    stabilized.Value.Fence.Source,
+                    stabilized.Value.Fence.Target,
+                    stabilized.Value.Fence.Transport,
+                    WasInvalidated: false);
+            }
+
             wasInvalidated = true;
             Record(
                 DiagnosticSeverity.Warning,
@@ -829,6 +856,107 @@ public sealed class SyncCoordinator : IAsyncDisposable
 
         throw new SnapshotUnstableException(
             "The consoles changed during every snapshot attempt; live writes remain blocked.");
+    }
+
+    private async Task<(WritePlan Plan, EventSequences Fence)?>
+        TryStabilizeSnapshotIncrementallyAsync(CancellationToken cancellationToken)
+    {
+        var currentSource = sourceSession ?? throw new IOException("Source session is missing.");
+        var currentTarget = targetSession ?? throw new IOException("Target session is missing.");
+        for (var attempt = 1; attempt <= 3; attempt++)
+        {
+            WingParameter[] sourceChanges;
+            WingParameter[] targetChanges;
+            EventSequences before;
+            lock (eventIntakeSync)
+            {
+                before = new EventSequences(
+                    sourceEventSequence,
+                    targetEventSequence,
+                    Interlocked.Read(ref transportGeneration));
+                sourceChanges = deferredSourceEvents.Values
+                    .Select(static item => item.Parameter)
+                    .ToArray();
+                targetChanges = deferredTargetEvents.Values
+                    .Select(static item => item.Parameter)
+                    .ToArray();
+            }
+
+            if (sourceChanges.Concat(targetChanges).Any(static parameter =>
+                    TokenPath.Parse(parameter.TokenPath).Leaf.Equals(
+                        "mdl",
+                        StringComparison.OrdinalIgnoreCase)))
+            {
+                return null;
+            }
+
+            var sourceReadTask = ReadExactOverlayAsync(
+                currentSource,
+                sourceChanges,
+                cancellationToken);
+            var targetReadTask = ReadExactOverlayAsync(
+                currentTarget,
+                targetChanges,
+                cancellationToken);
+            await Task.WhenAll(sourceReadTask, targetReadTask).ConfigureAwait(false);
+            foreach (var parameter in await sourceReadTask.ConfigureAwait(false))
+            {
+                sourceState[parameter.TokenPath] = parameter.Value;
+            }
+
+            foreach (var parameter in await targetReadTask.ConfigureAwait(false))
+            {
+                targetState[parameter.TokenPath] = parameter.Value;
+            }
+
+            var after = GetEventSequences();
+            if (before == after)
+            {
+                return (CreatePlanFromCurrentState(), after);
+            }
+        }
+
+        return null;
+    }
+
+    private async Task<IReadOnlyList<WingParameter>> ReadExactOverlayAsync(
+        IWingSession session,
+        WingParameter[] changes,
+        CancellationToken cancellationToken)
+    {
+        var exact = new List<WingParameter>(changes.Length);
+        foreach (var token in changes
+                     .Select(static parameter => parameter.TokenPath)
+                     .Distinct(StringComparer.Ordinal)
+                     .Order(StringComparer.Ordinal))
+        {
+            exact.Add(await ReadExactParameterAsync(session, token, cancellationToken)
+                .ConfigureAwait(false));
+        }
+
+        return exact;
+    }
+
+    private WritePlan CreatePlanFromCurrentState()
+    {
+        var currentConfiguration = configuration ??
+            throw new InvalidOperationException("Configuration is missing.");
+        var changes = sourceState
+            .Where(pair => IsEnabledScopedToken(pair.Key))
+            .Select(pair => new SyncChange(
+                TokenPath.Parse(pair.Key),
+                pair.Value,
+                clock.UtcNow,
+                Interlocked.Increment(ref sourceRevision)))
+            .ToArray();
+        var completePlan = planner.Plan(
+            changes,
+            currentConfiguration.Channels,
+            currentConfiguration.Scopes,
+            currentConfiguration.Safety,
+            clock.UtcNow);
+        UpdateDesiredTargets(completePlan);
+        return FilterUnchangedWrites(completePlan);
     }
 
     private async Task<WritePlan> ReadFreshPlanAttemptAsync(CancellationToken cancellationToken)
@@ -931,28 +1059,31 @@ public sealed class SyncCoordinator : IAsyncDisposable
     {
         for (var attempt = 1; attempt <= 3; attempt++)
         {
-            // Two scalar-certified passes must agree. Node snapshots alone are
-            // insufficient because some firmware exposes a stale local mirror.
-            var first = await ReadScalarCertifiedNodePassAsync(
+            // Two fast node passes establish a stable candidate set. Certify the
+            // stable second pass exactly once; repeating every scalar read doubled
+            // startup time without adding another independent stability signal.
+            var first = await ReadNodeCandidatePassAsync(
                     session,
                     nodes,
                     sourceSide,
                     cancellationToken)
                 .ConfigureAwait(false);
-            var second = await ReadScalarCertifiedNodePassAsync(
+            var second = await ReadNodeCandidatePassAsync(
                     session,
                     nodes,
                     sourceSide,
                     cancellationToken)
                 .ConfigureAwait(false);
-            if (!first.ModelMirrorMismatch &&
-                !second.ModelMirrorMismatch &&
-                ParameterMapsAreEquivalent(
-                    first.Values,
-                    second.Values,
-                    0.0001F))
+            if (!ParameterMapsAreEquivalent(first, second, 0.0001F))
             {
-                return second.Values.Values
+                continue;
+            }
+
+            var certified = await CertifyNodePassAsync(session, second, cancellationToken)
+                .ConfigureAwait(false);
+            if (!certified.ModelMirrorMismatch)
+            {
+                return certified.Values.Values
                     .OrderBy(static parameter => parameter.TokenPath, StringComparer.Ordinal)
                     .ToArray();
             }
@@ -963,8 +1094,8 @@ public sealed class SyncCoordinator : IAsyncDisposable
             "no writes were sent.");
     }
 
-    private async Task<StableNodePass>
-        ReadScalarCertifiedNodePassAsync(
+    private async Task<IReadOnlyDictionary<string, WingParameter>>
+        ReadNodeCandidatePassAsync(
             IWingSession session,
             IReadOnlyList<TokenPath> nodes,
             bool sourceSide,
@@ -972,11 +1103,12 @@ public sealed class SyncCoordinator : IAsyncDisposable
     {
         var candidates = new Dictionary<string, WingParameter>(StringComparer.Ordinal);
 
-        // Node reads discover the available leaves efficiently; exact scalar reads
-        // below certify every value that can enter the plan.
         foreach (var node in nodes)
         {
-            var snapshot = await session.SnapshotAsync(node.ToString(), cancellationToken)
+            var snapshot = await SnapshotNodeWithProcessorFallbackAsync(
+                    session,
+                    node,
+                    cancellationToken)
                 .ConfigureAwait(false);
             foreach (var parameter in snapshot)
             {
@@ -987,6 +1119,14 @@ public sealed class SyncCoordinator : IAsyncDisposable
             }
         }
 
+        return new ReadOnlyDictionary<string, WingParameter>(candidates);
+    }
+
+    private async Task<StableNodePass> CertifyNodePassAsync(
+        IWingSession session,
+        IReadOnlyDictionary<string, WingParameter> candidates,
+        CancellationToken cancellationToken)
+    {
         var certified = new Dictionary<string, WingParameter>(StringComparer.Ordinal);
         var modelMirrorMismatch = false;
         foreach (var token in candidates.Keys.Order(StringComparer.Ordinal))
@@ -1013,6 +1153,112 @@ public sealed class SyncCoordinator : IAsyncDisposable
             new ReadOnlyDictionary<string, WingParameter>(certified),
             modelMirrorMismatch);
     }
+
+    private static async Task<IReadOnlyList<WingParameter>>
+        SnapshotNodeWithProcessorFallbackAsync(
+            IWingSession session,
+            TokenPath node,
+            CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await session.SnapshotAsync(node.ToString(), cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (IOException exception) when (
+            node.Segments.Count >= 3 &&
+            exception.Message.Contains("invalid WAPI token", StringComparison.OrdinalIgnoreCase))
+        {
+            var recovered = new List<WingParameter>();
+            var consecutiveMissingNumbers = 0;
+            foreach (var token in GetNodeFallbackScalarTokens(node))
+            {
+                var numbered = int.TryParse(TokenPath.Parse(token).Leaf, out _);
+                IReadOnlyList<WingParameter> exact;
+                try
+                {
+                    exact = await session.SnapshotAsync(token, cancellationToken)
+                        .ConfigureAwait(false);
+                }
+                catch (IOException scalarException) when (IsMissingOptionalScalar(scalarException))
+                {
+                    if (numbered && ++consecutiveMissingNumbers >= 3)
+                    {
+                        break;
+                    }
+
+                    continue;
+                }
+
+                var parameter = exact.SingleOrDefault(value =>
+                    value.TokenPath.Equals(token, StringComparison.Ordinal));
+                if (parameter is not null)
+                {
+                    recovered.Add(parameter);
+                    if (numbered)
+                    {
+                        consecutiveMissingNumbers = 0;
+                    }
+                }
+                else if (numbered && ++consecutiveMissingNumbers >= 3)
+                {
+                    break;
+                }
+            }
+
+            return recovered;
+        }
+    }
+
+    private static IEnumerable<string> GetNodeFallbackScalarTokens(TokenPath node)
+    {
+        var prefix = $"/{node.Segments[0]}/{node.Segments[1]}";
+        var section = node.Segments[2].ToLowerInvariant();
+        var group = $"{prefix}/{section}";
+        var standard = section switch
+        {
+            "gate" => new[]
+            {
+                $"{group}/on", $"{group}/mdl", $"{group}/gain", $"{group}/mix",
+                $"{group}/thr", $"{group}/threshold", $"{group}/range", $"{group}/ratio",
+                $"{group}/attack", $"{group}/hold", $"{group}/release",
+                $"{prefix}/gatesc/f", $"{prefix}/gatesc/q", $"{prefix}/gatesc/src",
+                $"{prefix}/gatesc/tap", $"{prefix}/gatesc/type",
+            },
+            "gatesc" =>
+            [
+                $"{group}/f", $"{group}/q", $"{group}/src", $"{group}/tap", $"{group}/type",
+            ],
+            "dyn" =>
+            [
+                $"{group}/on", $"{group}/byp", $"{group}/mdl", $"{group}/gain", $"{group}/mix",
+                $"{group}/thr", $"{group}/threshold", $"{group}/ratio", $"{group}/knee",
+                $"{group}/attack", $"{group}/hold", $"{group}/release",
+            ],
+            "dynsc" =>
+            [
+                $"{group}/f", $"{group}/q", $"{group}/src", $"{group}/tap", $"{group}/type",
+            ],
+            "dynxo" =>
+            [
+                $"{group}/depth", $"{group}/f", $"{group}/q", $"{group}/type",
+            ],
+            "eq" or "peq" => [$"{group}/on", $"{group}/mdl"],
+            "flt" =>
+            [
+                $"{group}/lc", $"{group}/hc", $"{group}/tf", $"{group}/mdl",
+                $"{group}/lcf", $"{group}/hcf",
+            ],
+            _ => [],
+        };
+        return standard
+            .Distinct(StringComparer.Ordinal)
+            .Concat(Enumerable.Range(1, 32).Select(number => $"{group}/{number}"));
+    }
+
+    private static bool IsMissingOptionalScalar(IOException exception) =>
+        exception.Message.Contains("unknown WAPI token name", StringComparison.OrdinalIgnoreCase) ||
+        exception.Message.Contains("returned no data", StringComparison.OrdinalIgnoreCase);
 
     private static bool ParameterMapsAreEquivalent(
         IReadOnlyDictionary<string, WingParameter> left,
@@ -1223,7 +1469,7 @@ public sealed class SyncCoordinator : IAsyncDisposable
         var units = BuildExecutionUnits(executable);
         var preflightTransportGeneration = Interlocked.Read(ref transportGeneration);
         var executionFence = GetEventSequences();
-        await ValidateExecutionUnitsBeforeWriteAsync(
+        units = await ValidateExecutionUnitsBeforeWriteAsync(
                 units,
                 currentTarget,
                 preflightTransportGeneration,
@@ -1363,6 +1609,7 @@ public sealed class SyncCoordinator : IAsyncDisposable
         CancellationToken cancellationToken)
     {
         var executionBatches = GetExecutionBatches(unit).ToArray();
+        var postModelLayoutValidated = !HasProcessorModelMutation(unit);
         for (var batchIndex = 0; batchIndex < executionBatches.Length; batchIndex++)
         {
             var executionBatch = executionBatches[batchIndex];
@@ -1374,6 +1621,18 @@ public sealed class SyncCoordinator : IAsyncDisposable
                 executionFence,
                 "The source or target console changed before the next transaction phase.");
             ThrowIfSafetyTransactionInterfered(guardContext);
+            if (!postModelLayoutValidated && executionBatch.Phase == 2)
+            {
+                await ValidatePostModelLayoutAsync(
+                        unit,
+                        currentTarget,
+                        guardContext,
+                        executionFence,
+                        cancellationToken)
+                    .ConfigureAwait(false);
+                postModelLayoutValidated = true;
+            }
+
             var batchTransportGeneration = Interlocked.Read(ref transportGeneration);
             if (!IsTargetTransportCurrent(currentTarget, batchTransportGeneration) ||
                 (guardContext is not null &&
@@ -1607,6 +1866,80 @@ public sealed class SyncCoordinator : IAsyncDisposable
             Interlocked.Add(ref synchronizedWrites, batch.Length);
             RaiseMetrics();
         }
+    }
+
+    private async Task ValidatePostModelLayoutAsync(
+        ExecutionUnit unit,
+        IWingSession target,
+        SafetyGuardExecutionContext? context,
+        EventSequences executionFence,
+        CancellationToken cancellationToken)
+    {
+        var expected = unit.Writes
+            .Where(static write => GetExecutionPhase(write) == 2)
+            .GroupBy(static write => write.TargetPath.ToString(), StringComparer.Ordinal)
+            .Select(static group => group.OrderBy(write => write.Sequence).Last())
+            .OrderBy(static write => write.TargetPath.ToString(), StringComparer.Ordinal)
+            .ToArray();
+
+        IOException? lastLayoutError = null;
+        for (var attempt = 1; attempt <= 3; attempt++)
+        {
+            try
+            {
+                foreach (var write in expected)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    ThrowIfStopRequested(
+                        "A stop request blocked post-model layout validation.");
+                    ThrowIfSafetyTransactionInterfered(context);
+                    ThrowIfEventFenceChanged(
+                        executionFence,
+                        "The source or target console changed while the new processor layout was being validated.");
+
+                    var token = write.TargetPath.ToString();
+                    var snapshot = await target.SnapshotAsync(token, cancellationToken).ConfigureAwait(false);
+                    var exact = snapshot
+                        .Where(parameter => parameter.TokenPath.Equals(token, StringComparison.Ordinal))
+                        .ToArray();
+                    if (exact.Length != 1)
+                    {
+                        throw new IOException(
+                            $"Processor model {unit.TransactionGroup} was changed, but target scalar {token} " +
+                            "is not present in the newly instantiated WAPI layout; the safety guard remains active.");
+                    }
+
+                    if (exact[0].Value.Type != write.Value.Type)
+                    {
+                        throw new IOException(
+                            $"Processor model {unit.TransactionGroup} was changed, but target scalar {token} " +
+                            $"has WAPI type {exact[0].Value.Type} instead of {write.Value.Type}; " +
+                            "no model-dependent parameter writes were sent and the safety guard remains active.");
+                    }
+
+                    targetState[token] = exact[0].Value;
+                }
+
+                lastLayoutError = null;
+                break;
+            }
+            catch (IOException exception) when (attempt < 3)
+            {
+                lastLayoutError = exception;
+                await clock.Delay(TimeSpan.FromMilliseconds(50), cancellationToken)
+                    .ConfigureAwait(false);
+            }
+        }
+
+        if (lastLayoutError is not null)
+        {
+            throw lastLayoutError;
+        }
+
+        ThrowIfSafetyTransactionInterfered(context);
+        ThrowIfEventFenceChanged(
+            executionFence,
+            "The source or target console changed after the new processor layout was validated.");
     }
 
     private async Task VerifyActiveSafetyGuardsAsync(
@@ -1905,7 +2238,7 @@ public sealed class SyncCoordinator : IAsyncDisposable
         return units.ToArray();
     }
 
-    private async Task ValidateExecutionUnitsBeforeWriteAsync(
+    private async Task<ExecutionUnit[]> ValidateExecutionUnitsBeforeWriteAsync(
         IReadOnlyList<ExecutionUnit> units,
         IWingSession expectedTarget,
         long expectedTransportGeneration,
@@ -1917,6 +2250,12 @@ public sealed class SyncCoordinator : IAsyncDisposable
         var seenGroups = new HashSet<string>(StringComparer.Ordinal);
         var tolerance = configuration?.Safety.FloatTolerance ?? 0.0001F;
         var targetPreflight = new Dictionary<string, WingValue>(StringComparer.Ordinal);
+        var postModelTokens = units
+            .Where(HasProcessorModelMutation)
+            .SelectMany(static unit => unit.Writes)
+            .Where(static write => GetExecutionPhase(write) == 2)
+            .Select(static write => write.TargetPath.ToString())
+            .ToHashSet(StringComparer.Ordinal);
 
         foreach (var tokenGroup in units
                      .SelectMany(static unit => unit.Writes)
@@ -1925,6 +2264,14 @@ public sealed class SyncCoordinator : IAsyncDisposable
                          StringComparer.Ordinal)
                      .OrderBy(static group => group.Key, StringComparer.Ordinal))
         {
+            // Numbered processor parameters are dynamically instantiated by WING.
+            // Their existence and WAPI type can only be certified after `mdl` has
+            // changed and its readback has completed.
+            if (postModelTokens.Contains(tokenGroup.Key))
+            {
+                continue;
+            }
+
             ThrowIfEventFenceChanged(
                 executionFence,
                 "The source or target console changed during full target preflight.");
@@ -1942,7 +2289,10 @@ public sealed class SyncCoordinator : IAsyncDisposable
                     tokenGroup.Key,
                     cancellationToken)
                 .ConfigureAwait(false);
-            if (tokenGroup.Any(write => write.Value.Type != actual.Type))
+            if (tokenGroup.Any(write =>
+                    write.Value.Type != actual.Type &&
+                    (!IsEnablePath(write.TargetPath) ||
+                     !TryConvertBooleanValue(write.Value, actual.Type, out _))))
             {
                 throw new IOException(
                     $"Target scalar {tokenGroup.Key} does not have the planned WAPI type; " +
@@ -1952,7 +2302,42 @@ public sealed class SyncCoordinator : IAsyncDisposable
             targetPreflight[tokenGroup.Key] = actual;
         }
 
-        foreach (var unit in units)
+        var adaptedUnits = units.Select(unit => new ExecutionUnit(
+            unit.TransactionGroup,
+            unit.Writes.Select(write =>
+            {
+                if (!targetPreflight.TryGetValue(
+                        write.TargetPath.ToString(),
+                        out var preflightValue))
+                {
+                    return write;
+                }
+
+                var targetType = preflightValue.Type;
+                if (write.Value.Type == targetType)
+                {
+                    return write;
+                }
+
+                if (!TryConvertBooleanValue(write.Value, targetType, out var converted))
+                {
+                    return write;
+                }
+
+                var lifetime = write.Echo.ExpiresAt - write.Echo.CreatedAt;
+                return write with
+                {
+                    Value = converted,
+                    Echo = EchoFingerprint.Create(
+                        write.TargetPath,
+                        converted,
+                        write.Echo.CreatedAt,
+                        lifetime,
+                        tolerance),
+                };
+            }).ToArray())).ToArray();
+
+        foreach (var unit in adaptedUnits)
         {
             ThrowIfEventFenceChanged(
                 executionFence,
@@ -2059,15 +2444,22 @@ public sealed class SyncCoordinator : IAsyncDisposable
                 }
 
                 var finalWrite = finalWrites[0];
-                if (sourceValue.Type != finalWrite.Value.Type ||
-                    targetValue.Type != finalWrite.Value.Type ||
-                    !WingValueComparer.AreEquivalent(
+                if (targetValue.Type != finalWrite.Value.Type)
+                {
+                    throw new IOException(
+                        $"Target enable scalar {targetToken} has WAPI type {targetValue.Type} " +
+                        $"instead of planned type {finalWrite.Value.Type}; no writes were sent.");
+                }
+
+                if (!ValuesMatchPlannedMeaning(
+                        finalWrite.TargetPath,
                         sourceValue,
                         finalWrite.Value,
                         tolerance))
                 {
-                    throw new IOException(
-                        $"The exact enable values for {sourceToken} and {targetToken} do not match the plan in a type-safe way; no writes were sent.");
+                    throw new ReconciliationInterruptedException(
+                        $"Source enable scalar {sourceToken} changed after this plan was built; " +
+                        "the stale plan was discarded before any writes and will be rebuilt.");
                 }
 
                 var expectedFinalPhase = IsEnableActive(finalWrite.TargetPath, finalWrite.Value)
@@ -2085,6 +2477,73 @@ public sealed class SyncCoordinator : IAsyncDisposable
         ThrowIfEventFenceChanged(
             executionFence,
             "The source or target console changed before the first write; the plan is being rebuilt.");
+        return adaptedUnits;
+    }
+
+    private static bool TryConvertBooleanValue(
+        WingValue value,
+        WingValueType targetType,
+        out WingValue converted)
+    {
+        var enabled = value.Type switch
+        {
+            WingValueType.I => value.AsInt32() != 0,
+            WingValueType.F => value.AsFloat() != 0F,
+            WingValueType.S when TryParseBoolean(value.AsString(), out var parsed) => parsed,
+            _ => (bool?)null,
+        };
+        if (enabled is null)
+        {
+            converted = default;
+            return false;
+        }
+
+        converted = targetType switch
+        {
+            WingValueType.I => WingValue.FromInt32(enabled.Value ? 1 : 0),
+            WingValueType.F => WingValue.FromFloat(enabled.Value ? 1F : 0F),
+            WingValueType.S => WingValue.FromString(enabled.Value ? "ON" : "OFF"),
+            _ => default,
+        };
+        return targetType is WingValueType.I or WingValueType.F or WingValueType.S;
+    }
+
+    private static bool ValuesMatchPlannedMeaning(
+        TokenPath path,
+        WingValue observed,
+        WingValue planned,
+        float tolerance)
+    {
+        if (observed.Type == planned.Type)
+        {
+            return WingValueComparer.AreEquivalent(observed, planned, tolerance);
+        }
+
+        return IsEnablePath(path) &&
+               TryConvertBooleanValue(observed, planned.Type, out var converted) &&
+               WingValueComparer.AreEquivalent(converted, planned, tolerance);
+    }
+
+    private static bool TryParseBoolean(string value, out bool enabled)
+    {
+        if (value.Equals("ON", StringComparison.OrdinalIgnoreCase) ||
+            value.Equals("TRUE", StringComparison.OrdinalIgnoreCase) ||
+            value.Equals("YES", StringComparison.OrdinalIgnoreCase) || value == "1")
+        {
+            enabled = true;
+            return true;
+        }
+
+        if (value.Equals("OFF", StringComparison.OrdinalIgnoreCase) ||
+            value.Equals("FALSE", StringComparison.OrdinalIgnoreCase) ||
+            value.Equals("NO", StringComparison.OrdinalIgnoreCase) || value == "0")
+        {
+            enabled = false;
+            return true;
+        }
+
+        enabled = false;
+        return false;
     }
 
     private bool IsTransportPairCurrent(
@@ -2094,23 +2553,32 @@ public sealed class SyncCoordinator : IAsyncDisposable
         ReferenceEquals(expectedSource, sourceSession) &&
         IsTargetTransportCurrent(expectedTarget, expectedTransportGeneration);
 
-    private static async Task<WingValue> ReadExactScalarAsync(
+    private async Task<WingValue> ReadExactScalarAsync(
         IWingSession session,
         string token,
         CancellationToken cancellationToken)
     {
-        var snapshot = await session.SnapshotAsync(token, cancellationToken).ConfigureAwait(false);
-        var exact = snapshot
-            .Where(parameter =>
-                parameter.TokenPath.Equals(token, StringComparison.Ordinal))
-            .ToArray();
-        if (exact.Length != 1)
+        for (var attempt = 1; attempt <= 3; attempt++)
         {
-            throw new IOException(
-                $"Scalar {token} could not be read unambiguously and authoritatively.");
+            var snapshot = await session.SnapshotAsync(token, cancellationToken).ConfigureAwait(false);
+            var exact = snapshot
+                .Where(parameter =>
+                    parameter.TokenPath.Equals(token, StringComparison.Ordinal))
+                .ToArray();
+            if (exact.Length == 1)
+            {
+                return exact[0].Value;
+            }
+
+            if (attempt < 3)
+            {
+                await clock.Delay(TimeSpan.FromMilliseconds(25), cancellationToken)
+                    .ConfigureAwait(false);
+            }
         }
 
-        return exact[0].Value;
+        throw new IOException(
+            $"Scalar {token} could not be read unambiguously and authoritatively after three attempts.");
     }
 
     private static TokenPath[] GetCanonicalEnablePaths(TokenPath mutationPath)
@@ -2403,9 +2871,29 @@ public sealed class SyncCoordinator : IAsyncDisposable
             // dispatch and arrive after the waiter was registered. Always perform a fresh
             // scalar readback after dispatch so a delayed matching event can never certify
             // a dropped, transformed, or otherwise incorrect live write.
-            var readback = await currentTarget.SnapshotAsync(token, cancellationToken).ConfigureAwait(false);
-            var actual = readback.FirstOrDefault(parameter =>
-                string.Equals(parameter.TokenPath, token, StringComparison.Ordinal));
+            WingParameter? actual = null;
+            for (var attempt = 1; attempt <= 3; attempt++)
+            {
+                var readback = await currentTarget.SnapshotAsync(token, cancellationToken)
+                    .ConfigureAwait(false);
+                actual = readback.FirstOrDefault(parameter =>
+                    string.Equals(parameter.TokenPath, token, StringComparison.Ordinal));
+                if (actual is not null &&
+                    WingValueComparer.AreEquivalent(
+                        write.Value,
+                        actual.Value,
+                        currentConfiguration.Safety.FloatTolerance))
+                {
+                    break;
+                }
+
+                if (attempt < 3)
+                {
+                    await clock.Delay(TimeSpan.FromMilliseconds(50), cancellationToken)
+                        .ConfigureAwait(false);
+                }
+            }
+
             if (actual is null ||
                 !WingValueComparer.AreEquivalent(
                     write.Value,
@@ -2445,7 +2933,10 @@ public sealed class SyncCoordinator : IAsyncDisposable
 
                 // The short window absorbs bursts from one physical control move.
                 // Last source value wins; source work outranks target-drift work.
-                await clock.Delay(TimeSpan.FromMilliseconds(25), cancellationToken).ConfigureAwait(false);
+                var coalesceDelay = ShouldAggressivelyCoalesce(first.Parameter.TokenPath)
+                    ? TimeSpan.FromMilliseconds(75)
+                    : TimeSpan.FromMilliseconds(25);
+                await clock.Delay(coalesceDelay, cancellationToken).ConfigureAwait(false);
                 var coalesced = new Dictionary<string, EngineWork>(StringComparer.Ordinal)
                 {
                     [first.Parameter.TokenPath] = first,
@@ -2568,6 +3059,15 @@ public sealed class SyncCoordinator : IAsyncDisposable
                             Enqueue(work with { Epoch = Volatile.Read(ref activeEpoch) });
                         }
                     }
+                }
+                catch (IOException exception) when (IsTransportInterruption(exception))
+                {
+                    Record(
+                        DiagnosticSeverity.Warning,
+                        "SYNC_BATCH_TRANSPORT_INTERRUPTED",
+                        $"The active batch was discarded after a transport interruption: {exception.Message}",
+                        "Network");
+                    TriggerReconnect(exception.Message);
                 }
                 catch (Exception exception)
                 {
@@ -2780,6 +3280,12 @@ public sealed class SyncCoordinator : IAsyncDisposable
                     .OrderBy(static item => item.TokenPath, StringComparer.Ordinal)
                     .ToArray();
             }
+
+            if (attempt < 3)
+            {
+                await clock.Delay(TimeSpan.FromMilliseconds(50), cancellationToken)
+                    .ConfigureAwait(false);
+            }
         }
 
         throw new SnapshotUnstableException(
@@ -2797,7 +3303,10 @@ public sealed class SyncCoordinator : IAsyncDisposable
         var candidates = new Dictionary<string, WingParameter>(StringComparer.Ordinal);
         foreach (var node in nodes)
         {
-            var snapshot = await session.SnapshotAsync(node, cancellationToken)
+            var snapshot = await SnapshotNodeWithProcessorFallbackAsync(
+                    session,
+                    TokenPath.Parse(node),
+                    cancellationToken)
                 .ConfigureAwait(false);
             foreach (var parameter in snapshot.Where(parameter =>
                          IsEnabledScopedToken(parameter.TokenPath) &&
@@ -2811,8 +3320,7 @@ public sealed class SyncCoordinator : IAsyncDisposable
         }
 
         var certified = new Dictionary<string, WingParameter>(StringComparer.Ordinal);
-        var modelMirrorMismatch = false;
-        var tolerance = configuration?.Safety.FloatTolerance ?? 0.0001F;
+        var required = requiredTokens.ToHashSet(StringComparer.Ordinal);
         var tokens = candidates.Keys
             .Concat(requiredTokens)
             .Distinct(StringComparer.Ordinal)
@@ -2820,27 +3328,38 @@ public sealed class SyncCoordinator : IAsyncDisposable
             .ToArray();
         foreach (var token in tokens)
         {
-            var exact = await ReadExactParameterAsync(session, token, cancellationToken)
-                .ConfigureAwait(false);
-            certified[token] = exact;
-            if (TokenPath.Parse(token).Leaf.Equals("mdl", StringComparison.OrdinalIgnoreCase) &&
-                candidates.TryGetValue(token, out var mirrored) &&
-                (mirrored.Value.Type != exact.Value.Type ||
-                 !WingValueComparer.AreEquivalent(
-                     mirrored.Value,
-                     exact.Value,
-                     tolerance)))
+            IReadOnlyList<WingParameter> snapshot;
+            try
             {
-                modelMirrorMismatch = true;
+                snapshot = await session.SnapshotAsync(token, cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            catch (IOException exception) when (
+                !required.Contains(token) && IsMissingOptionalScalar(exception))
+            {
+                continue;
+            }
+
+            var exact = snapshot
+                .Where(parameter => parameter.TokenPath.Equals(token, StringComparison.Ordinal))
+                .ToArray();
+            if (exact.Length == 1)
+            {
+                certified[token] = exact[0];
+            }
+            else if (required.Contains(token))
+            {
+                throw new IOException(
+                    $"Required processor scalar {token} could not be read authoritatively; no writes were sent.");
             }
         }
 
         return new StableGroupPass(
             new ReadOnlyDictionary<string, WingParameter>(certified),
-            modelMirrorMismatch);
+            ModelMirrorMismatch: false);
     }
 
-    private static async Task<IReadOnlyList<WingParameter>> ReadExactGroupOnceAsync(
+    private async Task<IReadOnlyList<WingParameter>> ReadExactGroupOnceAsync(
         IWingSession session,
         IReadOnlyList<string> tokens,
         CancellationToken cancellationToken)
@@ -2887,23 +3406,40 @@ public sealed class SyncCoordinator : IAsyncDisposable
             "gezaghebbende dubbele reads; no writes were sent.");
     }
 
-    private static async Task<WingParameter> ReadExactParameterAsync(
+    private async Task<WingParameter> ReadExactParameterAsync(
         IWingSession session,
         string token,
         CancellationToken cancellationToken)
     {
-        var snapshot = await session.SnapshotAsync(token, cancellationToken).ConfigureAwait(false);
-        var exact = snapshot
-            .Where(parameter =>
-                parameter.TokenPath.Equals(token, StringComparison.Ordinal))
-            .ToArray();
-        if (exact.Length != 1)
+        for (var attempt = 1; attempt <= 3; attempt++)
         {
-            throw new IOException(
-                $"Scalar {token} could not be read unambiguously and authoritatively.");
+            var snapshot = await session.SnapshotAsync(token, cancellationToken).ConfigureAwait(false);
+            var exact = snapshot
+                .Where(parameter =>
+                    parameter.TokenPath.Equals(token, StringComparison.Ordinal))
+                .ToArray();
+            if (exact.Length == 1)
+            {
+                return exact[0];
+            }
+
+            if (attempt < 3)
+            {
+                await clock.Delay(TimeSpan.FromMilliseconds(25), cancellationToken)
+                    .ConfigureAwait(false);
+            }
         }
 
-        return exact[0];
+        throw new IOException(
+            $"Scalar {token} could not be read unambiguously and authoritatively after three attempts.");
+    }
+
+    private static bool ShouldAggressivelyCoalesce(string token)
+    {
+        var path = TokenPath.Parse(token);
+        return !path.Leaf.Equals("mdl", StringComparison.OrdinalIgnoreCase) &&
+               !IsEnablePath(path) &&
+               !ScopeCatalog.IsSidechainSourceToken(path);
     }
 
     private static RuntimeProcessorRefresh? GetRuntimeProcessorRefresh(TokenPath path)
@@ -2932,6 +3468,16 @@ public sealed class SyncCoordinator : IAsyncDisposable
                 $"{channelRoot}/dynsc/src"),
             _ => null,
         };
+    }
+
+    private static string GetChannelRoot(TokenPath path)
+    {
+        if (path.Segments.Count < 2)
+        {
+            throw new IOException($"Token {path} has no channel root.");
+        }
+
+        return $"/{path.Segments[0]}/{path.Segments[1]}";
     }
 
     private async Task StoreSourceEventsAsync(
@@ -3385,8 +3931,10 @@ public sealed class SyncCoordinator : IAsyncDisposable
                     break;
                 }
 
-                var fallback = await source
-                    .SnapshotAsync(node.ToString(), cancellationToken)
+                var fallback = await SnapshotNodeWithProcessorFallbackAsync(
+                        source,
+                        node,
+                        cancellationToken)
                     .ConfigureAwait(false);
                 foreach (var parameter in fallback)
                 {
@@ -4061,6 +4609,13 @@ public sealed class SyncCoordinator : IAsyncDisposable
         fohSession?.State == WingSessionState.Connected &&
         monitorSession?.State == WingSessionState.Connected;
 
+    private bool IsTransportInterruption(IOException exception) =>
+        !AreTransportSessionsConnected() ||
+        exception.Message.Contains("WAPI helper", StringComparison.OrdinalIgnoreCase) ||
+        exception.Message.Contains("transport", StringComparison.OrdinalIgnoreCase) ||
+        exception.Message.Contains("connection", StringComparison.OrdinalIgnoreCase) ||
+        exception.Message.Contains("socket", StringComparison.OrdinalIgnoreCase);
+
     private void Enqueue(EngineWork work)
     {
         var channel = workChannel;
@@ -4206,6 +4761,7 @@ public sealed class SyncCoordinator : IAsyncDisposable
                     else
                     {
                         pendingInitialPlan = plan;
+                        pendingInitialSnapshot = freshSnapshot;
                         pendingInitialPreview = CreatePreviewSummary(plan);
                         await PreviewPlanAsync(plan).ConfigureAwait(false);
                         ChangeStatus(
@@ -4479,6 +5035,7 @@ public sealed class SyncCoordinator : IAsyncDisposable
         sourceSession = null;
         targetSession = null;
         pendingInitialPlan = null;
+        pendingInitialSnapshot = null;
         pendingInitialPreview = null;
         sourceState.Clear();
         targetState.Clear();
@@ -4901,6 +5458,12 @@ public sealed class SyncCoordinator : IAsyncDisposable
 
         return IsEnableActive(write.TargetPath, write.Value) ? 3 : 0;
     }
+
+    private static bool HasProcessorModelMutation(ExecutionUnit unit) =>
+        unit.TransactionGroup is not null &&
+        unit.Writes.Any(static write =>
+            !write.IsSafetyGuard &&
+            write.TargetPath.Leaf.Equals("mdl", StringComparison.OrdinalIgnoreCase));
 
     private static bool IsEnableActive(TokenPath path, WingValue value)
     {

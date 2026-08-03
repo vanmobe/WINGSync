@@ -625,6 +625,13 @@ public static class SidechainReferenceMapper
 
             if (!mapping.TryMapInput(integerSourceChannel, out var integerTargetChannel))
             {
+                if (mapping.InputChannels.Count > 0 &&
+                    mapping.InputChannels.All(static item => item.Source == item.Target))
+                {
+                    target = source;
+                    return true;
+                }
+
                 error = $"Sidechain input channel {integerSourceChannel} has no unique target mapping.";
                 return false;
             }
@@ -651,6 +658,17 @@ public static class SidechainReferenceMapper
             : mapping.TryMapAux(sourceChannel, out targetChannel);
         if (!mapped)
         {
+            var numberingIsIdentity = kind == WingChannelKind.Input
+                ? mapping.InputChannels.Count > 0 &&
+                  mapping.InputChannels.All(static item => item.Source == item.Target)
+                : mapping.AuxChannels.Count > 0 &&
+                  mapping.AuxChannels.All(static item => item.Source == item.Target);
+            if (numberingIsIdentity)
+            {
+                target = source;
+                return true;
+            }
+
             error = $"Sidechain {kind} channel {sourceChannel} has no unique target mapping.";
             return false;
         }

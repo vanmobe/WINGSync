@@ -58,6 +58,7 @@ internal sealed class UiAppSession : IDisposable
             UseShellExecute = false,
         };
         startInfo.ArgumentList.Add("--demo");
+        startInfo.ArgumentList.Add("--skip-startup-guidance");
         if (demoDiscoveryOffline)
         {
             startInfo.ArgumentList.Add("--demo-offline");

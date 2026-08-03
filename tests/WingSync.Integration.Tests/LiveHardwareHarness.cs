@@ -167,6 +167,10 @@ internal static class LiveHardwareHarness
                 .ConfigureAwait(false);
             await ReadRequiredNodesAsync(fohSession, "FOH", cancellationToken).ConfigureAwait(false);
             await ReadRequiredNodesAsync(stageSession, "Stage", cancellationToken).ConfigureAwait(false);
+            await ProbeProcessorCompatibilityAsync(fohSession, "FOH", cancellationToken)
+                .ConfigureAwait(false);
+            await ProbeProcessorCompatibilityAsync(stageSession, "Stage", cancellationToken)
+                .ConfigureAwait(false);
 
             var keepaliveStopwatch = Stopwatch.StartNew();
             var pingCount = 0;
@@ -205,9 +209,52 @@ internal static class LiveHardwareHarness
             throw new IOException("The two read-only helpers were not cleanly disconnected.");
         }
 
+        await RunCoordinatorReadOnlyAsync(helperPath, identities, pins, cancellationToken)
+            .ConfigureAwait(false);
+
         Console.WriteLine(
-            "PASS  LIVE READ-ONLY: exact discovery, two helpers, $SYSCFG/$STAT/CH40, " +
-            "keepalive >=12s en clean disconnect.");
+            "PASS  LIVE READ-ONLY: exact discovery, firmware matrix, full coordinator dry-run, " +
+            "keepalive >=12s and clean disconnect.");
+    }
+
+    private static async Task RunCoordinatorReadOnlyAsync(
+        string helperPath,
+        ExpectedPair identities,
+        HardwarePins pins,
+        CancellationToken cancellationToken)
+    {
+        var observer = new RecordingObserver();
+        await using var coordinator = new SyncCoordinator(
+            new WapiSessionFactory(helperPath, observer),
+            new ExactLiveIdentityVerifier(pins),
+            new RecordingStateSink(),
+            observer);
+        var configuration = new AppConfiguration(
+            identities.Foh.Endpoint,
+            identities.Stage.Endpoint,
+            SyncDirection.FohToMonitor,
+            InitialSync.PreviewOnly,
+            new SafetySettings(
+                dryRun: true,
+                requireReadback: true,
+                allowHighRiskWrites: false,
+                stopOnVerificationFailure: true),
+            [
+                SyncScope.Cust, SyncScope.In, SyncScope.Filter, SyncScope.Delay,
+                SyncScope.Gate, SyncScope.Dyn, SyncScope.Eq, SyncScope.Pan,
+            ],
+            new ChannelMapping([new InputChannelMapping(2, 2)]));
+
+        await coordinator.StartAsync(configuration, true, cancellationToken)
+            .ConfigureAwait(false);
+        if (coordinator.Status.State != SyncCoordinatorState.RunningDryRun)
+        {
+            throw new InvalidDataException(
+                $"Full read-only coordinator entered {coordinator.Status.State} instead of RunningDryRun.");
+        }
+
+        await coordinator.StopAsync(cancellationToken).ConfigureAwait(false);
+        Console.WriteLine("Coordinator: full CH2 low-risk dry-run completed without writes.");
     }
 
     private static async Task AssertConnectedSerialAsync(
@@ -769,6 +816,61 @@ internal static class LiveHardwareHarness
 
         Console.WriteLine(
             $"{role}: $SYSCFG={syscfg.Count}, $STAT={status.Count}, CH40={channel40.Count} items.");
+    }
+
+    private static async Task ProbeProcessorCompatibilityAsync(
+        WapiProcessSession session,
+        string role,
+        CancellationToken cancellationToken)
+    {
+        foreach (var channel in new[] { 1, 2, 40 })
+        {
+            var prefix = $"/ch/{channel}";
+            foreach (var node in new[]
+                     {
+                         prefix,
+                         $"{prefix}/gate", $"{prefix}/gatesc",
+                         $"{prefix}/dyn", $"{prefix}/dynsc", $"{prefix}/dynxo",
+                         $"{prefix}/eq", $"{prefix}/peq", $"{prefix}/flt",
+                     })
+            {
+                try
+                {
+                    var values = await session.SnapshotAsync(node, cancellationToken)
+                        .ConfigureAwait(false);
+                    Console.WriteLine($"{role}: NODE {node} => OK ({values.Count})");
+                }
+                catch (IOException exception)
+                {
+                    Console.WriteLine($"{role}: NODE {node} => REJECTED ({exception.Message})");
+                }
+            }
+        }
+
+        foreach (var channel in new[] { 1, 2 })
+        {
+            var prefix = $"/ch/{channel}";
+            foreach (var token in new[]
+                     {
+                         $"{prefix}/gate/mdl", $"{prefix}/gate/on",
+                         $"{prefix}/gatesc/src", $"{prefix}/dyn/mdl",
+                         $"{prefix}/dyn/on", $"{prefix}/dynsc/src",
+                         $"{prefix}/eq/mdl", $"{prefix}/eq/on",
+                         $"{prefix}/flt/lc", $"{prefix}/flt/hc",
+                     })
+            {
+                var values = await session.SnapshotAsync(token, cancellationToken)
+                    .ConfigureAwait(false);
+                var exact = values.Count(value =>
+                    value.TokenPath.Equals(token, StringComparison.Ordinal));
+                Console.WriteLine($"{role}: SCALAR {token} => {exact}");
+                if (exact != 1)
+                {
+                    throw new InvalidDataException(
+                        $"{role}: required exact scalar {token} returned {exact} values.");
+                }
+            }
+        }
     }
 
     private static async Task<IReadOnlyList<WingParameter>> RequireSnapshotAsync(

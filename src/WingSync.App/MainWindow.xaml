@@ -3,17 +3,19 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:automation="clr-namespace:System.Windows.Automation;assembly=PresentationCore"
         Title="WingSync"
+        Icon="Assets/WingSync.ico"
         Width="1240"
-        Height="800"
+        Height="720"
         MinWidth="860"
         MinHeight="480"
         WindowStartupLocation="CenterScreen"
         PreviewKeyDown="OnPreviewKeyDown"
+        PreviewMouseWheel="OnPreviewMouseWheel"
         automation:AutomationProperties.AutomationId="MainWindow">
     <Window.Resources>
         <Style x:Key="LightNavButton" TargetType="ListBoxItem">
             <Setter Property="Foreground" Value="{StaticResource MutedInkBrush}" />
-            <Setter Property="Padding" Value="14,11" />
+            <Setter Property="Padding" Value="14,8" />
             <Setter Property="Margin" Value="9,2" />
             <Setter Property="HorizontalContentAlignment" Value="Stretch" />
             <Setter Property="Cursor" Value="Hand" />
@@ -59,13 +61,50 @@
             <Setter Property="Background" Value="{StaticResource WingYellowBrush}" />
             <Setter Property="Foreground" Value="{StaticResource OnWingYellowBrush}" />
             <Setter Property="MinWidth" Value="112" />
-            <Setter Property="Padding" Value="15,9" />
+            <Setter Property="Padding" Value="15,7" />
+        </Style>
+
+        <Style x:Key="ConnectionActionButton" TargetType="Button" BasedOn="{StaticResource PrimaryButton}">
+            <Setter Property="Background" Value="{StaticResource SubtleBrush}" />
+            <Setter Property="Foreground" Value="{StaticResource InkBrush}" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsConnectionNextAction}" Value="True">
+                    <Setter Property="Background" Value="{StaticResource WingYellowBrush}" />
+                    <Setter Property="Foreground" Value="{StaticResource OnWingYellowBrush}" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="MappingActionButton" TargetType="Button" BasedOn="{StaticResource PrimaryButton}">
+            <Setter Property="Background" Value="{StaticResource SubtleBrush}" />
+            <Setter Property="Foreground" Value="{StaticResource InkBrush}" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsMappingNextAction}" Value="True">
+                    <Setter Property="Background" Value="{StaticResource WingYellowBrush}" />
+                    <Setter Property="Foreground" Value="{StaticResource OnWingYellowBrush}" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="RowIconButton" TargetType="Button" BasedOn="{StaticResource SecondaryButton}">
+            <Setter Property="Width" Value="30" />
+            <Setter Property="MinHeight" Value="28" />
+            <Setter Property="Padding" Value="6" />
+        </Style>
+
+        <Style x:Key="StopActionButton" TargetType="Button" BasedOn="{StaticResource PrimaryButton}">
+            <Setter Property="Background" Value="{StaticResource DangerBrush}" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsPreviewRunning}" Value="True">
+                    <Setter Property="Background" Value="{StaticResource AccentBrush}" />
+                </DataTrigger>
+            </Style.Triggers>
         </Style>
     </Window.Resources>
     <Grid Background="{StaticResource CanvasBrush}">
         <Grid.RowDefinitions>
-            <RowDefinition Height="88" />
-            <RowDefinition Height="74" />
+            <RowDefinition Height="68" />
+            <RowDefinition Height="56" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
@@ -73,7 +112,7 @@
                 Background="{StaticResource ChromeBrush}"
                 BorderBrush="{StaticResource LineBrush}"
                 BorderThickness="0,0,0,1">
-            <Grid Margin="14,8">
+            <Grid Margin="12,6">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="128" />
                     <ColumnDefinition Width="14" />
@@ -166,14 +205,14 @@
                 </Border>
 
                 <Button Grid.Column="4"
-                        Content="Stop"
+                        Content="{Binding StopButtonText}"
                         Command="{Binding StopCommand}"
                         IsEnabled="{Binding IsRunning}"
-                        Style="{StaticResource DangerButton}"
+                        Style="{StaticResource StopActionButton}"
                         MinWidth="76"
                         Padding="14,9"
                         VerticalAlignment="Center"
-                        ToolTip="Emergency stop (Ctrl+Shift+S)"
+                        ToolTip="{Binding StopButtonHelpText}"
                         automation:AutomationProperties.AutomationId="StopButton"
                         automation:AutomationProperties.Name="Immediately block new synchronization writes"
                         automation:AutomationProperties.AcceleratorKey="Ctrl+Shift+S"
@@ -195,7 +234,7 @@
                 BorderBrush="{StaticResource LineBrush}"
                 BorderThickness="0,0,0,1"
                 automation:AutomationProperties.AutomationId="WorkflowTimeline">
-            <Grid Margin="20,8">
+            <Grid Margin="16,5">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="148" />
                     <ColumnDefinition Width="*" />
@@ -206,7 +245,7 @@
                     <TextBlock Text="Follow each stage in order"
                                Foreground="{StaticResource MutedInkBrush}"
                                FontSize="11"
-                               Margin="0,3,0,0" />
+                               Margin="0,1,0,0" />
                 </StackPanel>
                 <ItemsControl Grid.Column="1"
                               ItemsSource="{Binding WorkflowSteps}"
@@ -218,37 +257,39 @@
                     </ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                            <Grid Margin="0,0,6,0">
-                                <Border Height="2"
-                                        Margin="50,0,-12,21"
+                            <Grid Margin="8,0,0,0" VerticalAlignment="Center">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Border Width="26"
+                                        Height="26"
+                                        CornerRadius="13"
+                                        Background="{Binding Background}"
+                                        BorderBrush="{Binding Foreground}"
+                                        BorderThickness="1">
+                                    <TextBlock Text="{Binding Marker}"
+                                               Foreground="{Binding Foreground}"
+                                               FontWeight="Bold"
+                                               HorizontalAlignment="Center"
+                                               VerticalAlignment="Center" />
+                                </Border>
+                                <StackPanel Grid.Column="1" Margin="8,0,0,0" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding Name}"
+                                               FontWeight="SemiBold"
+                                               automation:AutomationProperties.AutomationId="{Binding AutomationId}"
+                                               automation:AutomationProperties.Name="{Binding Status}" />
+                                    <TextBlock Text="{Binding Status}"
+                                               Foreground="{Binding Foreground}"
+                                               FontSize="10" />
+                                </StackPanel>
+                                <Border Grid.Column="2"
+                                        Height="2"
+                                        Margin="12,0,-8,0"
                                         VerticalAlignment="Center"
                                         Background="{Binding Connector}"
                                         Visibility="{Binding ConnectorVisibility}" />
-                                <StackPanel Orientation="Horizontal"
-                                            HorizontalAlignment="Center"
-                                            VerticalAlignment="Center">
-                                    <Border Width="30"
-                                            Height="30"
-                                            CornerRadius="15"
-                                            Background="{Binding Background}"
-                                            BorderBrush="{Binding Foreground}"
-                                            BorderThickness="1">
-                                        <TextBlock Text="{Binding Marker}"
-                                                   Foreground="{Binding Foreground}"
-                                                   FontWeight="Bold"
-                                                   HorizontalAlignment="Center"
-                                                   VerticalAlignment="Center" />
-                                    </Border>
-                                    <StackPanel Margin="8,0,0,0" VerticalAlignment="Center">
-                                        <TextBlock Text="{Binding Name}"
-                                                   FontWeight="SemiBold"
-                                                   automation:AutomationProperties.AutomationId="{Binding AutomationId}"
-                                                   automation:AutomationProperties.Name="{Binding Status}" />
-                                        <TextBlock Text="{Binding Status}"
-                                                   Foreground="{Binding Foreground}"
-                                                   FontSize="10" />
-                                    </StackPanel>
-                                </StackPanel>
                             </Grid>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
@@ -290,33 +331,43 @@
                         </StackPanel>
                     </ListBoxItem>
                     <ListBoxItem Style="{StaticResource LightNavButton}"
-                                 ToolTip="Synchronization (Ctrl+2)"
+                                 ToolTip="Connections (Ctrl+2)"
                                  automation:AutomationProperties.AutomationId="NavigationSync"
-                                 automation:AutomationProperties.Name="Synchronization"
+                                 automation:AutomationProperties.Name="Connections"
                                  automation:AutomationProperties.AcceleratorKey="Ctrl+2"
-                                 automation:AutomationProperties.HelpText="Configure consoles, scopes, and channel mapping. Shortcut Ctrl+2.">
+                                 automation:AutomationProperties.HelpText="Discover, assign, and verify both consoles. Shortcut Ctrl+2.">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="&#x2194;" Foreground="{StaticResource WingYellowBrush}" FontSize="18" Margin="0,-2,10,0" />
-                            <TextBlock Text="Synchronization" />
+                            <TextBlock Text="Connections" />
                         </StackPanel>
                     </ListBoxItem>
                     <ListBoxItem Style="{StaticResource LightNavButton}"
-                                 ToolTip="Activity (Ctrl+3)"
+                                 ToolTip="Mapping &amp; scopes (Ctrl+3)"
+                                 automation:AutomationProperties.AutomationId="NavigationMapping"
+                                 automation:AutomationProperties.Name="Mapping and scopes"
+                                 automation:AutomationProperties.AcceleratorKey="Ctrl+3">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#x21C4;" Foreground="{StaticResource WingYellowBrush}" FontSize="18" Margin="0,-2,10,0" />
+                            <TextBlock Text="Mapping &amp; scopes" />
+                        </StackPanel>
+                    </ListBoxItem>
+                    <ListBoxItem Style="{StaticResource LightNavButton}"
+                                 ToolTip="Activity (Ctrl+4)"
                                  automation:AutomationProperties.AutomationId="NavigationActivity"
                                  automation:AutomationProperties.Name="Activity"
-                                 automation:AutomationProperties.AcceleratorKey="Ctrl+3"
-                                 automation:AutomationProperties.HelpText="View writes, reconnects, and problems. Shortcut Ctrl+3.">
+                                 automation:AutomationProperties.AcceleratorKey="Ctrl+4"
+                                 automation:AutomationProperties.HelpText="View writes, reconnects, and problems. Shortcut Ctrl+4.">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="&#x2261;" Foreground="{StaticResource WingYellowBrush}" FontSize="19" Margin="0,-3,11,0" />
                             <TextBlock Text="Activity" />
                         </StackPanel>
                     </ListBoxItem>
                     <ListBoxItem Style="{StaticResource LightNavButton}"
-                                 ToolTip="Settings (Ctrl+4)"
+                                 ToolTip="Settings (Ctrl+5)"
                                  automation:AutomationProperties.AutomationId="NavigationSettings"
                                  automation:AutomationProperties.Name="Settings"
-                                 automation:AutomationProperties.AcceleratorKey="Ctrl+4"
-                                 automation:AutomationProperties.HelpText="Open recovery, cache, and product information. Shortcut Ctrl+4.">
+                                 automation:AutomationProperties.AcceleratorKey="Ctrl+5"
+                                 automation:AutomationProperties.HelpText="Open recovery, cache, and product information. Shortcut Ctrl+5.">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="&#x2699;" Foreground="{StaticResource WingYellowBrush}" FontSize="16" Margin="0,-1,10,0" />
                             <TextBlock Text="Settings" />
@@ -395,6 +446,10 @@
                                     Visibility="{Binding HasBlockingProblems, Converter={StaticResource BooleanToVisibilityConverter}}"
                                     automation:AutomationProperties.AutomationId="ProblemBanner">
                                 <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                    </Grid.RowDefinitions>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="Auto" />
                                         <ColumnDefinition Width="*" />
@@ -411,10 +466,31 @@
                                                    Foreground="{StaticResource WarningTextBrush}"
                                                    TextWrapping="Wrap" />
                                     </StackPanel>
-                                    <Button Grid.Column="2"
-                                            Content="View"
-                                            Command="{Binding ShowProblemsCommand}"
-                                            Style="{StaticResource SecondaryButton}" />
+                                    <StackPanel Grid.Column="2" Orientation="Horizontal">
+                                        <Button Content="View details"
+                                                Command="{Binding ShowProblemsCommand}"
+                                                Style="{StaticResource SecondaryButton}" />
+                                        <Button Content="Recover safely"
+                                                Command="{Binding RecoverBlockedSessionCommand}"
+                                                Visibility="{Binding IsRecoverableBlock, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                                Style="{StaticResource WingPrimaryButton}"
+                                                Margin="8,0,0,0"
+                                                ToolTip="Stop the current session, reconnect, verify both console identities, and read status again. Live remains off."
+                                                automation:AutomationProperties.AutomationId="RecoverBlockedSessionButton"
+                                                automation:AutomationProperties.HelpText="Safely reconnects and verifies both consoles without resuming live or applying cached changes." />
+                                    </StackPanel>
+                                    <Border Grid.Row="1"
+                                            Grid.Column="1"
+                                            Grid.ColumnSpan="2"
+                                            Background="{StaticResource NavyBrush}"
+                                            CornerRadius="4"
+                                            Padding="10,7"
+                                            Margin="12,10,0,0"
+                                            Visibility="{Binding IsRecoverableBlock, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                        <TextBlock Text="{Binding RecoverySafetyText}"
+                                                   Foreground="{StaticResource MutedInkBrush}"
+                                                   TextWrapping="Wrap" />
+                                    </Border>
                                 </Grid>
                             </Border>
 
@@ -716,15 +792,57 @@
 
                 <TabItem>
                     <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <StackPanel Margin="30,27,30,40" MaxWidth="1150" IsEnabled="{Binding IsEditorEnabled}">
+                            <TextBlock Text="Connections" Style="{StaticResource PageTitle}" />
+                            <TextBlock Text="Discover both consoles, confirm their roles, and verify WAPI before configuring the mapping."
+                                       Foreground="{StaticResource MutedInkBrush}" Margin="0,0,0,22" />
+                            <Border Style="{StaticResource Card}">
+                                <StackPanel>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="16" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                        <StackPanel>
+                                            <TextBlock Text="{Binding FohEditorCaption}" Style="{StaticResource SectionTitle}" />
+                                            <TextBlock Text="Discovered console" Foreground="{StaticResource MutedInkBrush}" />
+                                            <ComboBox ItemsSource="{Binding DiscoveredWings}" SelectedItem="{Binding SelectedFohWing}"
+                                                      Margin="0,4,0,10" automation:AutomationProperties.AutomationId="ConnectionsFohConsoleCombo"
+                                                      DisplayMemberPath="DisplayName" />
+                                            <TextBlock Text="IP address" Foreground="{StaticResource MutedInkBrush}" />
+                                            <TextBox Text="{Binding EditableFohIp, UpdateSourceTrigger=PropertyChanged}" Margin="0,4,0,0" />
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="2">
+                                            <TextBlock Text="{Binding StageEditorCaption}" Style="{StaticResource SectionTitle}" />
+                                            <TextBlock Text="Discovered console" Foreground="{StaticResource MutedInkBrush}" />
+                                            <ComboBox ItemsSource="{Binding DiscoveredWings}" SelectedItem="{Binding SelectedStageWing}"
+                                                      Margin="0,4,0,10" automation:AutomationProperties.AutomationId="ConnectionsStageConsoleCombo"
+                                                      DisplayMemberPath="DisplayName" />
+                                            <TextBlock Text="IP address" Foreground="{StaticResource MutedInkBrush}" />
+                                            <TextBox Text="{Binding EditableStageIp, UpdateSourceTrigger=PropertyChanged}" Margin="0,4,0,0" />
+                                        </StackPanel>
+                                    </Grid>
+                                    <StackPanel Orientation="Horizontal" Margin="0,16,0,0">
+                                        <Button Content="Find consoles" Command="{Binding DiscoverCommand}" Style="{StaticResource SecondaryButton}" />
+                                        <Button Content="Test connection" Command="{Binding TestConnectionsCommand}"
+                                                Style="{StaticResource ConnectionActionButton}" Margin="8,0,0,0" />
+                                        <TextBlock Text="{Binding DiscoveryStatus}" Foreground="{StaticResource MutedInkBrush}"
+                                                   VerticalAlignment="Center" Margin="12,0,0,0" TextWrapping="Wrap" />
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
+
+                <TabItem>
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
                         <StackPanel Margin="30,27,30,40"
                                     MaxWidth="1150"
                                     IsEnabled="{Binding IsEditorEnabled}">
-                            <TextBlock Text="Synchronization" Style="{StaticResource PageTitle}" />
-                            <TextBlock Text="Choose the consoles, WING scopes, and the channel mapping. This configuration is locked during an active session."
+                            <TextBlock Text="Mapping &amp; scopes" Style="{StaticResource PageTitle}" />
+                            <TextBlock Text="Choose what is compared and how source channels map to target channels. Generate a new preview after changes."
                                        Foreground="{StaticResource MutedInkBrush}"
                                        Margin="0,0,0,22" />
 
-                            <Border Style="{StaticResource Card}" Margin="0,0,0,16">
+                            <Border Style="{StaticResource Card}" Margin="0,0,0,16" Visibility="Collapsed">
                                 <StackPanel>
                                     <Grid>
                                         <Grid.ColumnDefinitions>
@@ -782,7 +900,7 @@
                                                 automation:AutomationProperties.AutomationId="DiscoverButton" />
                                         <Button Content="Test connection"
                                                 Command="{Binding TestConnectionsCommand}"
-                                                Style="{StaticResource SecondaryButton}"
+                                                Style="{StaticResource ConnectionActionButton}"
                                                 Margin="8,0,0,0"
                                                 automation:AutomationProperties.AutomationId="TestConnectionsButton" />
                                         <TextBlock Text="{Binding DiscoveryStatus}"
@@ -850,8 +968,8 @@
                                                   automation:AutomationProperties.AutomationId="DryRunCheckBox"
                                                   automation:AutomationProperties.Name="Dry run, no writes">
                                             <StackPanel>
-                                                <TextBlock Text="Dry run (no writes)" FontWeight="SemiBold" />
-                                                <TextBlock Text="Shows exactly what WingSync would change."
+                                                <TextBlock Text="Preview mode (no writes)" FontWeight="SemiBold" />
+                                                <TextBlock Text="Generate and review exactly what WingSync would change."
                                                            Foreground="{StaticResource MutedInkBrush}"
                                                            FontSize="11" />
                                             </StackPanel>
@@ -913,14 +1031,24 @@
                                                        FontSize="12"
                                                        Margin="0,4,0,0" />
                                         </StackPanel>
-                                        <StackPanel Grid.Column="1" Orientation="Horizontal">
-                                            <Button Content="Fill 1 → 1"
+                                        <WrapPanel Grid.Column="1" HorizontalAlignment="Right">
+                                            <Button Content="Import JSON"
+                                                    Command="{Binding ImportMappingsCommand}"
+                                                    Style="{StaticResource SecondaryButton}"
+                                                    automation:AutomationProperties.AutomationId="ImportMappingsButton" />
+                                            <Button Content="Export JSON"
+                                                    Command="{Binding ExportMappingsCommand}"
+                                                    Style="{StaticResource SecondaryButton}"
+                                                    Margin="8,0,0,0"
+                                                    automation:AutomationProperties.AutomationId="ExportMappingsButton" />
+                                            <Button Content="Fill range…"
                                                     Command="{Binding AutoMapCommand}"
                                                     Style="{StaticResource SecondaryButton}"
+                                                    Margin="8,0,0,0"
                                                     automation:AutomationProperties.AutomationId="AutoMapButton" />
                                             <Button Content="Add row"
                                                     Command="{Binding AddMappingCommand}"
-                                                    Style="{StaticResource SecondaryButton}"
+                                                    Style="{StaticResource MappingActionButton}"
                                                     Margin="8,0,0,0"
                                                     automation:AutomationProperties.AutomationId="AddMappingButton" />
                                             <Button Content="Add AUX"
@@ -933,7 +1061,7 @@
                                                     Style="{StaticResource SecondaryButton}"
                                                     Margin="8,0,0,0"
                                                     automation:AutomationProperties.AutomationId="RemoveMappingButton" />
-                                        </StackPanel>
+                                        </WrapPanel>
                                     </Grid>
                                     <DataGrid ItemsSource="{Binding ChannelMappings}"
                                               SelectedItem="{Binding SelectedMapping}"
@@ -946,8 +1074,29 @@
                                             <DataGridCheckBoxColumn Header="AUX" Binding="{Binding IsAux}" Width="60" />
                                             <DataGridTextColumn Header="Source channel" Binding="{Binding SourceChannelText, UpdateSourceTrigger=PropertyChanged}" Width="*" />
                                             <DataGridTextColumn Header="Target channel" Binding="{Binding TargetChannelText, UpdateSourceTrigger=PropertyChanged}" Width="*" />
-                                            <DataGridTextColumn Header="Channel" Binding="{Binding Label}" IsReadOnly="True" Width="2*" />
+                                            <DataGridTextColumn Header="Source name" Binding="{Binding SourceDisplayName}" IsReadOnly="True" Width="2*" />
+                                            <DataGridTextColumn Header="Target name" Binding="{Binding TargetDisplayName}" IsReadOnly="True" Width="2*" />
                                             <DataGridTextColumn Header="Validation" Binding="{Binding ValidationText}" IsReadOnly="True" Width="2*" />
+                                            <DataGridTemplateColumn Header="" Width="46">
+                                                <DataGridTemplateColumn.CellTemplate>
+                                                    <DataTemplate>
+                                                        <Button Command="{Binding DataContext.RemoveMappingCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                                                CommandParameter="{Binding}"
+                                                                Style="{StaticResource RowIconButton}"
+                                                                ToolTip="Remove this mapping"
+                                                                automation:AutomationProperties.Name="Remove this channel mapping">
+                                                            <Path Data="M5,6 L19,6 M8,6 L9,20 L15,20 L16,6 M9,3 L15,3 L16,6 L8,6 Z M11,9 L11,17 M14,9 L14,17"
+                                                                  Stroke="{StaticResource DangerBrush}"
+                                                                  StrokeThickness="1.7"
+                                                                  StrokeStartLineCap="Round"
+                                                                  StrokeEndLineCap="Round"
+                                                                  Width="20"
+                                                                  Height="22"
+                                                                  Stretch="Uniform" />
+                                                        </Button>
+                                                    </DataTemplate>
+                                                </DataGridTemplateColumn.CellTemplate>
+                                            </DataGridTemplateColumn>
                                         </DataGrid.Columns>
                                     </DataGrid>
                                     <Grid Margin="0,14,0,0">
@@ -984,10 +1133,25 @@
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
                             <RowDefinition Height="*" />
                         </Grid.RowDefinitions>
                         <TextBlock Text="Activity and problems" Style="{StaticResource PageTitle}" />
-                        <Grid Grid.Row="1" Margin="0,8,0,14">
+                        <Border Grid.Row="1"
+                                Background="{StaticResource InfoSurfaceBrush}"
+                                BorderBrush="{StaticResource AccentBrush}"
+                                BorderThickness="1"
+                                CornerRadius="7"
+                                Padding="12"
+                                Margin="0,6,0,10"
+                                Visibility="{Binding ShowPreviewGuidance, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <TextBlock Text="{Binding PreviewGuidanceText}"
+                                       Foreground="{StaticResource InfoTextBrush}"
+                                       FontWeight="SemiBold"
+                                       TextWrapping="Wrap"
+                                       automation:AutomationProperties.AutomationId="PreviewGuidanceText" />
+                        </Border>
+                        <Grid Grid.Row="2" Margin="0,8,0,14">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="Auto" />
@@ -1015,9 +1179,12 @@
                                     Style="{StaticResource PrimaryButton}"
                                     automation:AutomationProperties.AutomationId="ExportSupportButton" />
                         </Grid>
-                        <Border Grid.Row="2" Style="{StaticResource Card}" Padding="0">
+                        <Border Grid.Row="3" Style="{StaticResource Card}" Padding="0">
                             <ListView ItemsSource="{Binding FilteredActivity}"
                                       BorderThickness="0"
+                                      ScrollViewer.CanContentScroll="True"
+                                      VirtualizingPanel.IsVirtualizing="True"
+                                      VirtualizingPanel.VirtualizationMode="Recycling"
                                       automation:AutomationProperties.AutomationId="ActivityList">
                                 <ListView.View>
                                     <GridView>

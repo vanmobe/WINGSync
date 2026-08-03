@@ -31,6 +31,13 @@ internal static class Program
         new("PreviewOnly defers initial writes but permits subsequent events", PreviewOnlyDefersInitialWritesAsync),
         new("scope selection and channel mapping", ScopeSelectionAndChannelMappingAsync),
         new("dynamic model writes are safely phased", DynamicModelWritesAreSafelyPhasedAsync),
+        new("gate model changes refresh the target parameter layout", GateModelRefreshesTargetLayoutAsync),
+        new("dynamics model changes refresh the target parameter layout", DynamicsModelRefreshesTargetLayoutAsync),
+        new("runtime Gate discovery uses the WAPI channel root", RuntimeGateDiscoveryUsesChannelRootAsync),
+        new("identity channel numbering preserves an unmapped Gate sidechain", IdentityNumberingPreservesGateSidechainAsync),
+        new("runtime EQ discovery uses the WAPI channel root", RuntimeEqDiscoveryUsesChannelRootAsync),
+        new("initial processor discovery uses the WAPI channel root", InitialProcessorDiscoveryUsesChannelRootAsync),
+        new("a missing post-model scalar keeps the processor fail-closed", MissingPostModelScalarFailsClosedAsync),
         new(
             "partial processor snapshots fail before every target write",
             PartialProcessorSnapshotFailsBeforeWritesAsync),
@@ -50,11 +57,13 @@ internal static class Program
             SameGroupEventLeavesGuardFailClosedAsync),
         new("EQ model transactions never bypass independent PEQ", EqModelDoesNotBypassPeqAsync),
         new("non-model processor enable waits for parameter readback", ProcessorEnableFollowsParametersAsync),
+        new("processor enables adapt to the target WAPI scalar type", ProcessorEnableAdaptsToTargetTypeAsync),
         new(
             "coalesced same-group processor events all converge",
             CoalescedProcessorEventsAllConvergeAsync),
         new("filter model changes guard active LC, HC, and TF filters", FilterModelWritesAreSafelyPhasedAsync),
         new("delay mode and value synchronize as one guarded tuple", DelayTupleIsSafelyPhasedAsync),
+        new("delay target drift restores a differing enable state", DelayTargetDriftRestoresEnableAsync),
         new(
             "final-off EQ and delay transactions never re-enable",
             FinalOffTransactionsNeverReenableAsync),
@@ -98,7 +107,7 @@ internal static class Program
             "authoritative missed gate scalar outranks a stale node mirror",
             MissedGateScalarOutranksStaleNodeAsync),
         new(
-            "persistent stale EQ model mirrors fail closed",
+            "stale EQ mirrors cannot override an exact model scalar",
             PersistentStaleEqModelMirrorFailsClosedAsync),
         new(
             "authoritative gate sidechain scalar blocks a stale mapped mirror",
@@ -380,6 +389,265 @@ internal static class Program
                 write.TokenPath.StartsWith("/ch/8/eq/", StringComparison.Ordinal)),
             "A disabled scope or unmapped channel was written.");
         AssertEx.False(target.Contains("/ch/1/eq/g"), "The source channel number leaked to the target.");
+    }
+
+    private static async Task GateModelRefreshesTargetLayoutAsync()
+    {
+        var source = Session(
+            ("/ch/1/gate/mdl", WingValue.FromString("GATE")),
+            ("/ch/1/gate/3", WingValue.FromFloat(18F)),
+            ("/ch/1/gate/on", WingValue.FromInt32(1)));
+        var target = Session(
+            ("/ch/2/gate/mdl", WingValue.FromString("241")),
+            ("/ch/2/gate/3", WingValue.FromInt32(0)),
+            ("/ch/2/gate/on", WingValue.FromInt32(1)));
+        target.BeforeSetManyAsync = (capture, _) =>
+        {
+            if (capture.RequestedWrites.Any(static write =>
+                    write.TokenPath == "/ch/2/gate/mdl"))
+            {
+                // WING replaces the anonymous numbered scalar layout when mdl changes.
+                target.SetSilently("/ch/2/gate/3", WingValue.FromFloat(0F));
+            }
+
+            return Task.CompletedTask;
+        };
+
+        await using var coordinator = Coordinator(source, target, new RecordingObserver());
+        await coordinator.StartAsync(
+                Configuration(
+                    scopes: [SyncScope.Gate],
+                    dryRun: false,
+                    initialSync: InitialSync.SourceWins),
+                true,
+                CancellationToken.None)
+            .ConfigureAwait(false);
+
+        AssertEx.Equal(SyncCoordinatorState.RunningLive, coordinator.Status.State);
+        AssertEx.Equal(WingValue.FromString("GATE"), target.GetValue("/ch/2/gate/mdl"));
+        AssertEx.Equal(WingValue.FromFloat(18F), target.GetValue("/ch/2/gate/3"));
+        var writes = target.RequestedWrites.ToArray();
+        AssertEx.True(
+            Array.FindIndex(writes, write => write.TokenPath == "/ch/2/gate/mdl") <
+            Array.FindIndex(writes, write => write.TokenPath == "/ch/2/gate/3"),
+            "The Gate parameter was dispatched before its model was instantiated.");
+    }
+
+    private static async Task DynamicsModelRefreshesTargetLayoutAsync()
+    {
+        var source = Session(
+            ("/ch/1/dyn/mdl", WingValue.FromString("COMP")),
+            ("/ch/1/dyn/4", WingValue.FromString("PEAK")),
+            ("/ch/1/dyn/on", WingValue.FromInt32(1)));
+        var target = Session(
+            ("/ch/2/dyn/mdl", WingValue.FromString("241")),
+            ("/ch/2/dyn/4", WingValue.FromFloat(1F)),
+            ("/ch/2/dyn/on", WingValue.FromInt32(1)));
+        target.BeforeSetManyAsync = (capture, _) =>
+        {
+            if (capture.RequestedWrites.Any(static write =>
+                    write.TokenPath == "/ch/2/dyn/mdl"))
+            {
+                target.SetSilently("/ch/2/dyn/4", WingValue.FromString("RMS"));
+            }
+
+            return Task.CompletedTask;
+        };
+
+        await using var coordinator = Coordinator(source, target, new RecordingObserver());
+        await coordinator.StartAsync(
+                Configuration(
+                    scopes: [SyncScope.Dyn],
+                    dryRun: false,
+                    initialSync: InitialSync.SourceWins),
+                true,
+                CancellationToken.None)
+            .ConfigureAwait(false);
+
+        AssertEx.Equal(SyncCoordinatorState.RunningLive, coordinator.Status.State);
+        AssertEx.Equal(WingValue.FromString("COMP"), target.GetValue("/ch/2/dyn/mdl"));
+        AssertEx.Equal(WingValue.FromString("PEAK"), target.GetValue("/ch/2/dyn/4"));
+    }
+
+    private static async Task RuntimeGateDiscoveryUsesChannelRootAsync()
+    {
+        var source = Session(
+            ("/ch/1/gate/mdl", WingValue.FromString("241")),
+            ("/ch/1/gate/3", WingValue.FromInt32(0)),
+            ("/ch/1/gate/on", WingValue.FromInt32(1)),
+            ("/ch/1/gatesc/src", WingValue.FromString("CH.1")));
+        var target = Session(
+            ("/ch/2/gate/mdl", WingValue.FromString("241")),
+            ("/ch/2/gate/3", WingValue.FromInt32(0)),
+            ("/ch/2/gate/on", WingValue.FromInt32(1)),
+            ("/ch/2/gatesc/src", WingValue.FromString("CH.2")));
+        var rejectProcessorNodes = false;
+        source.SnapshotTransform = (node, values) =>
+            rejectProcessorNodes && (node == "/ch/1/gate" || node == "/ch/1/gatesc")
+                ? throw new IOException("WAPI_-2: invalid WAPI token")
+                : values;
+        target.BeforeSetManyAsync = (capture, _) =>
+        {
+            if (capture.RequestedWrites.Any(static write => write.TokenPath == "/ch/2/gate/mdl"))
+            {
+                target.SetSilently("/ch/2/gate/3", WingValue.FromFloat(0F));
+            }
+
+            return Task.CompletedTask;
+        };
+
+        await using var coordinator = Coordinator(source, target, new RecordingObserver());
+        await coordinator.StartAsync(
+                Configuration(scopes: [SyncScope.Gate], dryRun: false, initialSync: InitialSync.SourceWins),
+                true,
+                CancellationToken.None)
+            .ConfigureAwait(false);
+
+        rejectProcessorNodes = true;
+        source.SetSilently("/ch/1/gate/3", WingValue.FromFloat(12F));
+        source.ChangeFromConsole("/ch/1/gate/mdl", WingValue.FromString("GATE"));
+        await AssertEx.EventuallyAsync(
+                () => target.GetValue("/ch/2/gate/3") == WingValue.FromFloat(12F),
+                TimeSpan.FromSeconds(2),
+                "Runtime Gate model discovery did not converge through the channel root.")
+            .ConfigureAwait(false);
+        AssertEx.True(source.SnapshotRequests.Contains("/ch/1/gate/mdl"));
+    }
+
+    private static async Task IdentityNumberingPreservesGateSidechainAsync()
+    {
+        var source = Session(
+            ("/ch/2/gate/thr", WingValue.FromFloat(-12F)),
+            ("/ch/2/gate/on", WingValue.FromInt32(1)),
+            ("/ch/2/gatesc/src", WingValue.FromString("CH.1")));
+        var target = Session(
+            ("/ch/2/gate/thr", WingValue.FromFloat(-30F)),
+            ("/ch/2/gate/on", WingValue.FromInt32(1)),
+            ("/ch/2/gatesc/src", WingValue.FromString("CH.1")));
+        await using var coordinator = Coordinator(source, target, new RecordingObserver());
+        await coordinator.StartAsync(
+                Configuration(
+                    sourceChannel: 2,
+                    targetChannel: 2,
+                    scopes: [SyncScope.Gate],
+                    dryRun: false,
+                    initialSync: InitialSync.SourceWins),
+                true,
+                CancellationToken.None)
+            .ConfigureAwait(false);
+
+        source.ChangeFromConsole("/ch/2/gate/thr", WingValue.FromFloat(-6F));
+        await AssertEx.EventuallyAsync(
+                () => target.GetValue("/ch/2/gate/thr") == WingValue.FromFloat(-6F),
+                TimeSpan.FromSeconds(2),
+                "An identity-numbered CH.1 sidechain blocked the mapped channel 2 Gate.")
+            .ConfigureAwait(false);
+        AssertEx.Equal(WingValue.FromString("CH.1"), target.GetValue("/ch/2/gatesc/src"));
+    }
+
+    private static async Task InitialProcessorDiscoveryUsesChannelRootAsync()
+    {
+        var source = Session(
+            ("/ch/1/gate/thr", WingValue.FromFloat(-12F)),
+            ("/ch/1/gate/on", WingValue.FromInt32(1)));
+        var target = Session(
+            ("/ch/2/gate/thr", WingValue.FromFloat(-30F)),
+            ("/ch/2/gate/on", WingValue.FromInt32(1)));
+        static IReadOnlyList<WingParameter> RejectProcessorNode(
+            string node,
+            IReadOnlyList<WingParameter> values) =>
+            node is "/ch/1/gate" or "/ch/1/gatesc" or "/ch/2/gate" or "/ch/2/gatesc"
+                ? throw new IOException("WAPI_-2: invalid WAPI token")
+                : values;
+        source.SnapshotTransform = RejectProcessorNode;
+        target.SnapshotTransform = RejectProcessorNode;
+
+        await using var coordinator = Coordinator(source, target, new RecordingObserver());
+        await coordinator.StartAsync(
+                Configuration(scopes: [SyncScope.Gate], dryRun: false, initialSync: InitialSync.SourceWins),
+                true,
+                CancellationToken.None)
+            .ConfigureAwait(false);
+
+        AssertEx.Equal(WingValue.FromFloat(-12F), target.GetValue("/ch/2/gate/thr"));
+        AssertEx.True(source.SnapshotRequests.Contains("/ch/1/gate/mdl"));
+        AssertEx.True(target.SnapshotRequests.Contains("/ch/2/gate/mdl"));
+    }
+
+    private static async Task RuntimeEqDiscoveryUsesChannelRootAsync()
+    {
+        var source = Session(
+            ("/ch/1/eq/mdl", WingValue.FromString("STD")),
+            ("/ch/1/eq/3", WingValue.FromInt32(0)),
+            ("/ch/1/eq/on", WingValue.FromInt32(1)));
+        var target = Session(
+            ("/ch/2/eq/mdl", WingValue.FromString("STD")),
+            ("/ch/2/eq/3", WingValue.FromInt32(0)),
+            ("/ch/2/eq/on", WingValue.FromInt32(1)));
+        var rejectProcessorNodes = false;
+        source.SnapshotTransform = (node, values) =>
+            rejectProcessorNodes && node == "/ch/1/eq"
+                ? throw new IOException("WAPI_-2: invalid WAPI token")
+                : values;
+        target.BeforeSetManyAsync = (capture, _) =>
+        {
+            if (capture.RequestedWrites.Any(static write => write.TokenPath == "/ch/2/eq/mdl"))
+            {
+                target.SetSilently("/ch/2/eq/3", WingValue.FromFloat(0F));
+            }
+
+            return Task.CompletedTask;
+        };
+
+        await using var coordinator = Coordinator(source, target, new RecordingObserver());
+        await coordinator.StartAsync(
+                Configuration(scopes: [SyncScope.Eq], dryRun: false, initialSync: InitialSync.SourceWins),
+                true,
+                CancellationToken.None)
+            .ConfigureAwait(false);
+
+        rejectProcessorNodes = true;
+        source.SetSilently("/ch/1/eq/3", WingValue.FromFloat(4F));
+        source.ChangeFromConsole("/ch/1/eq/mdl", WingValue.FromString("SOUL"));
+        await AssertEx.EventuallyAsync(
+                () => target.GetValue("/ch/2/eq/3") == WingValue.FromFloat(4F),
+                TimeSpan.FromSeconds(2),
+                "Runtime EQ model discovery did not converge through the channel root.")
+            .ConfigureAwait(false);
+        AssertEx.True(source.SnapshotRequests.Contains("/ch/1/eq/mdl"));
+    }
+
+    private static async Task MissingPostModelScalarFailsClosedAsync()
+    {
+        var source = Session(
+            ("/ch/1/eq/mdl", WingValue.FromString("SOUL")),
+            ("/ch/1/eq/3", WingValue.FromFloat(4F)),
+            ("/ch/1/eq/on", WingValue.FromInt32(1)));
+        var target = Session(
+            ("/ch/2/eq/mdl", WingValue.FromString("STD")),
+            ("/ch/2/eq/3", WingValue.FromInt32(0)),
+            ("/ch/2/eq/on", WingValue.FromInt32(1)));
+        target.BeforeSetManyAsync = (capture, _) =>
+        {
+            if (capture.RequestedWrites.Any(static write => write.TokenPath == "/ch/2/eq/mdl"))
+            {
+                target.RemoveSilently("/ch/2/eq/3");
+            }
+
+            return Task.CompletedTask;
+        };
+
+        await using var coordinator = Coordinator(source, target, new RecordingObserver());
+        await AssertEx.ThrowsAsync<IOException>(() => coordinator.StartAsync(
+                Configuration(scopes: [SyncScope.Eq], dryRun: false, initialSync: InitialSync.SourceWins),
+                true,
+                CancellationToken.None))
+            .ConfigureAwait(false);
+
+        AssertEx.False(
+            target.RequestedWrites.Any(static write => write.TokenPath == "/ch/2/eq/3"),
+            "A model-dependent scalar was written after the new layout omitted it.");
+        AssertEx.Equal(WingValue.FromInt32(0), target.GetValue("/ch/2/eq/on"));
     }
 
     private static async Task DynamicModelWritesAreSafelyPhasedAsync()
@@ -794,6 +1062,31 @@ internal static class Program
         AssertWrite(target.RequestedBatches[1].Single(), "/ch/2/eq/on", WingValue.FromInt32(1));
     }
 
+    private static async Task ProcessorEnableAdaptsToTargetTypeAsync()
+    {
+        var source = Session(
+            ("/ch/1/eq/g", WingValue.FromFloat(0F)),
+            ("/ch/1/eq/on", WingValue.FromInt32(1)));
+        var target = Session(
+            ("/ch/2/eq/g", WingValue.FromFloat(0F)),
+            ("/ch/2/eq/on", WingValue.FromString("OFF")));
+        var observer = new RecordingObserver();
+        await using var coordinator = Coordinator(source, target, observer);
+
+        await coordinator.StartAsync(
+                Configuration(dryRun: false, initialSync: InitialSync.SourceWins),
+                true,
+                CancellationToken.None)
+            .ConfigureAwait(false);
+
+        AssertEx.Equal(WingValue.FromString("ON"), target.GetValue("/ch/2/eq/on"));
+        AssertEx.True(
+            target.RequestedWrites.Any(write =>
+                write.TokenPath == "/ch/2/eq/on" &&
+                write.Value == WingValue.FromString("ON")),
+            "The enable was not written using the target console's string scalar type.");
+    }
+
     private static async Task CoalescedProcessorEventsAllConvergeAsync()
     {
         var source = Session(
@@ -879,6 +1172,41 @@ internal static class Program
         AssertEx.True(target.RequestedBatches[5].All(write =>
             write.TokenPath is "/ch/2/flt/lc" or "/ch/2/flt/hc" or "/ch/2/flt/tf" &&
             write.Value == WingValue.FromInt32(1)));
+    }
+
+    private static async Task DelayTargetDriftRestoresEnableAsync()
+    {
+        var source = Session(
+            ("/ch/1/in/set/dlymode", WingValue.FromString("MS")),
+            ("/ch/1/in/set/dly", WingValue.FromFloat(0.5F)),
+            ("/ch/1/in/set/dlyon", WingValue.FromInt32(1)));
+        var target = Session(
+            ("/ch/2/in/set/dlymode", WingValue.FromString("MS")),
+            ("/ch/2/in/set/dly", WingValue.FromFloat(0.5F)),
+            ("/ch/2/in/set/dlyon", WingValue.FromInt32(1)));
+        await using var coordinator = Coordinator(source, target, new RecordingObserver());
+        await coordinator.StartAsync(
+                Configuration(
+                    scopes: [SyncScope.Delay],
+                    dryRun: false,
+                    initialSync: InitialSync.SourceWins),
+                true,
+                CancellationToken.None)
+            .ConfigureAwait(false);
+
+        target.ChangeFromConsole("/ch/2/in/set/dly", WingValue.FromFloat(0.1F));
+        target.ChangeFromConsole("/ch/2/in/set/dlymode", WingValue.FromString("M"));
+        target.ChangeFromConsole("/ch/2/in/set/dlyon", WingValue.FromInt32(0));
+
+        await AssertEx.EventuallyAsync(
+                () =>
+                    target.GetValue("/ch/2/in/set/dly") == WingValue.FromFloat(0.5F) &&
+                    target.GetValue("/ch/2/in/set/dlymode") == WingValue.FromString("MS") &&
+                    target.GetValue("/ch/2/in/set/dlyon") == WingValue.FromInt32(1),
+                TimeSpan.FromSeconds(3),
+                "A changed target Delay tuple was not restored from the current source state.")
+            .ConfigureAwait(false);
+        AssertEx.Equal(SyncCoordinatorState.RunningLive, coordinator.Status.State);
     }
 
     private static async Task DelayTupleIsSafelyPhasedAsync()
@@ -1715,23 +2043,15 @@ internal static class Program
         clock.Release();
 
         await AssertEx.EventuallyAsync(
-                () => coordinator.Status.State == SyncCoordinatorState.Paused,
+                () => target.GetValue("/ch/2/eq/mdl") == newModel,
                 TimeSpan.FromSeconds(2),
-                "A persistent disagreement between the EQ node mirror and exact scalar did not fail closed.")
+                "A stale EQ node mirror overrode the authoritative exact model scalar.")
             .ConfigureAwait(false);
-        AssertEx.Equal(oldModel, target.GetValue("/ch/2/eq/mdl"));
-        AssertEx.Equal(
-            0,
-            target.RequestedWrites.Count,
-            "An unstable EQ model mirror reached the target console.");
+        AssertEx.Equal(SyncCoordinatorState.RunningLive, coordinator.Status.State);
         AssertEx.True(
             observer.Diagnostics.Any(diagnostic =>
                 diagnostic.Code == "MISSED_SOURCE_EVENT_RECOVERED"),
             "The exact missed model change was not visible to the operator.");
-        AssertEx.True(
-            observer.Diagnostics.Any(diagnostic =>
-                diagnostic.Code == "SYNC_BATCH_FAILED"),
-            "The fail-closed stale-mirror condition was not visible to the operator.");
     }
 
     private static async Task GateSidechainScalarBlocksStaleMappedNodeAsync()
@@ -2246,6 +2566,7 @@ internal static class Program
 
         var gate = new SnapshotGate("/ch/1/eq", invocation: 3);
         source.SnapshotCapturedAsync = gate.OnCapturedAsync;
+        source.ChangeFromConsole("/ch/1/eq/g", staleValue);
         var confirmation = coordinator.ConfirmInitialSyncAsync(CancellationToken.None);
         await gate.WaitUntilEnteredAsync(TimeSpan.FromSeconds(2)).ConfigureAwait(false);
         source.ChangeFromConsole("/ch/1/eq/g", latestValue);
@@ -2293,6 +2614,7 @@ internal static class Program
 
         var gate = new SnapshotGate("/ch/2/eq", invocation: 3);
         target.SnapshotCapturedAsync = gate.OnCapturedAsync;
+        target.ChangeFromConsole("/ch/2/eq/g", authoritative);
         var confirmation = coordinator.ConfirmInitialSyncAsync(CancellationToken.None);
         await gate.WaitUntilEnteredAsync(TimeSpan.FromSeconds(2)).ConfigureAwait(false);
         target.ChangeFromConsole("/ch/2/eq/g", drift);
@@ -2531,6 +2853,7 @@ internal static class Program
 
         var snapshotGate = new SnapshotGate("/ch/1/eq", invocation: 3);
         source.SnapshotCapturedAsync = snapshotGate.OnCapturedAsync;
+        source.ChangeFromConsole("/ch/1/eq/g", authoritative);
         var confirmation = coordinator.ConfirmInitialSyncAsync(CancellationToken.None);
         await snapshotGate.WaitUntilEnteredAsync(TimeSpan.FromSeconds(2)).ConfigureAwait(false);
         source.DropConnection("reconnect while Confirm snapshot is gated");
